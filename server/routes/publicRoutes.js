@@ -1,14 +1,14 @@
 import express from "express";
 import multer from "multer";
 import { analyzeResume } from "../controllers/atsController.js";
+import { exportResumePDF } from "../controllers/pdfController.js";
+import { exportResumeDOCX } from "../controllers/docxController.js";
 
 const router = express.Router();
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const upload = multer({ storage: multer.memoryStorage() });
 
-// Route: POST /api/public/analyze
 router.post("/analyze", upload.single("resume"), analyzeResume);
+router.post("/export-pdf", exportResumePDF);
+router.post("/export-docx", exportResumeDOCX)
 
 export default router;
-
-

@@ -1,27 +1,28 @@
 import { createRequire } from "module";
 import { model } from "../config/gemini.js";
+import mammoth from "mammoth";
 
-// Bridge CommonJS modules into ESM
 const require = createRequire(import.meta.url);
+
+// pdf-parse v1.1.1 exports a FUNCTION
 const pdfParse = require("pdf-parse");
-const mammoth = require("mammoth");
 
 export const analyzeResume = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
+      return res.status(400).json({ error: "No resume uploaded" });
     }
 
     const { buffer, mimetype, originalname } = req.file;
     let resumeText = "";
 
-    /* -------------------- PDF -------------------- */
+    /* ---------- PDF ---------- */
     if (mimetype === "application/pdf") {
-      const pdfData = await pdfParse(buffer);
+      const pdfData = await pdfParse(buffer); // WORKS
       resumeText = pdfData.text;
     }
 
-    /* -------------------- DOCX -------------------- */
+    /* ---------- DOCX ---------- */
     else if (
       mimetype ===
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -30,89 +31,102 @@ export const analyzeResume = async (req, res) => {
       resumeText = result.value;
     }
 
-    /* -------------------- Unsupported -------------------- */
+    /* ---------- Unsupported ---------- */
     else {
       return res.status(400).json({
-        message: "Unsupported file type. Upload PDF or DOCX only",
+        error: "Only PDF or DOCX files are allowed",
       });
     }
 
-    if (!resumeText || resumeText.trim().length === 0) {
+    if (!resumeText.trim()) {
       return res.status(400).json({
-        message: "Could not extract text from resume",
+        error: "Failed to extract resume text",
       });
     }
 
-    console.log(
-      `📄 Resume extracted (${originalname}), length:`,
-      resumeText.length
-    );
+    console.log(`Resume extracted: ${originalname}`);
 
-    /* -------------------- GEMINI PROMPT -------------------- */
+    /* ---------- GEMINI PROMPT ---------- */
     const prompt = `
-You are an expert ATS (Applicant Tracking System) resume analyzer. Analyze the following resume and provide a comprehensive evaluation.
+You are an expert ATS resume writer.
 
-Resume Text:
-${resumeText}
+TASKS:
+1. Analyze the resume
+2. Identify strengths and weaknesses
+3. Rewrite the resume into ATS-optimized professional format
+4. Improve bullet points using action verbs
+5. Organize content into a clean resume structure
 
-Provide your analysis in the following JSON format:
+RULES:
+- Return STRICT JSON ONLY
+- No markdown
+- No explanations
+
+JSON FORMAT:
 {
-  "overallScore": <number between 0-100>,
-  "issuesCount": <number>,
-  "sections": {
-    "content": <score 0-100>,
-    "sections": <score 0-100>,
-    "atsEssentials": <score 0-100>,
-    "tailoring": <score 0-100>
-  },
   "analysis": {
-    "strengths": [
-      "Minimum 3 strengths"
+    "overallScore": 0-100,
+    "issuesCount": number,
+    "strengths": ["min 3"],
+    "weaknesses": ["min 3 with fixes"]
+  },
+  "optimizedResume": {
+    "header": {
+      "name": "",
+      "email": "",
+      "phone": "",
+      "linkedin": ""
+    },
+    "summary": "",
+    "skills": {
+      "technical": [],
+      "soft": []
+    },
+    "experience": [
+      {
+        "role": "",
+        "company": "",
+        "duration": "",
+        "bullets": []
+      }
     ],
-    "weaknesses": [
-      "Minimum 3 weaknesses with improvement suggestions"
-    ]
+    "education": [],
+    "projects": []
   }
 }
 
-Evaluate based on:
-- Content quality
-- Proper section organization
-- ATS compatibility
-- Job market tailoring
+Resume Text:
+<<<
+${resumeText}
+>>>
 `;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const responseText = response.text();
+    const responseText = await response.text();
 
-    console.log("🤖 Gemini response received");
-
-    /* -------------------- JSON PARSE -------------------- */
+    /* ---------- CLEAN & PARSE JSON ---------- */
     let data;
     try {
-      data = JSON.parse(responseText);
-    } catch (err) {
-      console.error("❌ JSON Parse Error");
-      console.error(responseText);
+      const cleaned = responseText
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
+        .trim();
+
+      data = JSON.parse(cleaned);
+    } catch {
       return res.status(500).json({
-        error: "AI returned invalid JSON",
+        error: "Invalid AI JSON output",
         rawResponse: responseText,
       });
     }
 
     res.status(200).json(data);
+
   } catch (error) {
-    console.error("❌ Resume Analysis Error:", error);
-
-    if (error.message?.includes("API key")) {
-      return res.status(401).json({
-        error: "Invalid Gemini API key",
-      });
-    }
-
+    console.error("Resume Analysis Error:", error);
     res.status(500).json({
-      error: "Failed to analyze resume",
+      error: "Resume analysis failed",
       details: error.message,
     });
   }
