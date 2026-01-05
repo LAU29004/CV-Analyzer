@@ -4,8 +4,8 @@ import mammoth from "mammoth";
 
 const require = createRequire(import.meta.url);
 
-// pdf-parse v1.1.1 exports a FUNCTION
-const pdfParse = require("pdf-parse");
+// pdf-parse v2 exports a CLASS
+const { PDFParse } = require("pdf-parse");
 
 export const analyzeResume = async (req, res) => {
   try {
@@ -18,7 +18,9 @@ export const analyzeResume = async (req, res) => {
 
     /* ---------- PDF ---------- */
     if (mimetype === "application/pdf") {
-      const pdfData = await pdfParse(buffer); // WORKS
+      const parser = new PDFParse({ data: buffer });
+      const pdfData = await parser.getText();
+      await parser.destroy();
       resumeText = pdfData.text;
     }
 
