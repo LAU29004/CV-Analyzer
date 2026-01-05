@@ -15,6 +15,7 @@
     "@google/generative-ai": "^0.17.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
+    "docx": "^8.5.0",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
@@ -22,6 +23,7 @@
     "mongoose": "^9.1.1",
     "multer": "^2.0.2",
     "nodemon": "^3.1.11",
-    "pdf-parse": "^2.4.5"
+    "pdf-parse": "^2.4.5",
+    "pdfkit": "^0.15.0"
   }
 }
