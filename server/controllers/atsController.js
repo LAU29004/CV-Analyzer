@@ -7,6 +7,20 @@ const require = createRequire(import.meta.url);
 // pdf-parse v2 exports a CLASS
 const { PDFParse } = require("pdf-parse");
 
+// Retry helper function
+const retry = async (fn, retries = 3, delay = 1000) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === retries - 1 || !error.message.includes('503')) throw error;
+      console.log(`Attempt ${i + 1} failed, retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay *= 2; // Exponential backoff
+    }
+  }
+};
+
 export const analyzeResume = async (req, res) => {
   try {
     if (!req.file) {
@@ -72,29 +86,48 @@ JSON FORMAT:
     "strengths": ["min 3"],
     "weaknesses": ["min 3 with fixes"]
   },
+  {
   "optimizedResume": {
     "header": {
       "name": "",
       "email": "",
       "phone": "",
-      "linkedin": ""
+      "linkedin": "",
+      "location": "" // ATS often filters by city/state
     },
-    "summary": "",
+    "summary": "", // Include measurable "career highlights" here
     "skills": {
-      "technical": [],
-      "soft": []
+      "technical": [], // Hard skills like "Node.js"
+      "soft": []       // Behavior skills like "Leadership"
     },
     "experience": [
       {
         "role": "",
         "company": "",
         "duration": "",
-        "bullets": []
+        "location": "",
+        "bullets": [] // Each bullet must follow the Action + Result format
       }
     ],
-    "education": [],
-    "projects": []
+    "education": [
+      {
+        "institution": "",
+        "degree": "",
+        "duration": "",
+        "gpa": "",       // Optional but good for students
+        "highlights": [] // Academic awards or honors
+      }
+    ],
+    "projects": [
+      {
+        "title": "",
+        "technologies": "",
+        "bullets": []    // Focused on your specific contribution
+      }
+    ],
+    "certifications_awards": [] // Critical for high-level screening
   }
+}
 }
 
 Resume Text:
@@ -103,7 +136,7 @@ ${resumeText}
 >>>
 `;
 
-    const result = await model.generateContent(prompt);
+    const result = await retry(() => model.generateContent(prompt));
     const response = await result.response;
     const responseText = await response.text();
 

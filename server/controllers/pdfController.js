@@ -1,123 +1,111 @@
 import PDFDocument from "pdfkit";
 
-export const exportResumePDF = async (req, res) => {
+export const exportStandardResume = async (req, res) => {
   try {
     const { optimizedResume } = req.body;
-
-    if (!optimizedResume) {
-      return res.status(400).json({ error: "optimizedResume is required" });
-    }
-
-    const doc = new PDFDocument({ margin: 50 });
-
-    // Set response headers
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=ATS_Resume.pdf"
-    );
-
-    doc.pipe(res);
-
-    /* ---------- HEADER ---------- */
-    doc
-      .fontSize(20)
-      .text(optimizedResume.header.name || "Your Name", { align: "center" })
-      .moveDown(0.5);
-
-    doc
-      .fontSize(10)
-      .text(
-        `${optimizedResume.header.email || ""} | ${
-          optimizedResume.header.phone || ""
-        } | ${optimizedResume.header.linkedin || ""}`,
-        { align: "center" }
-      );
-
-    doc.moveDown(1.5);
-
-    /* ---------- SUMMARY ---------- */
-    sectionTitle(doc, "PROFESSIONAL SUMMARY");
-    doc.fontSize(10).text(optimizedResume.summary || "").moveDown();
-
-    /* ---------- SKILLS ---------- */
-    sectionTitle(doc, "SKILLS");
-
-    if (optimizedResume.skills?.technical?.length) {
-      doc
-        .fontSize(10)
-        .text(
-          "Technical: " + optimizedResume.skills.technical.join(", ")
-        )
-        .moveDown(0.5);
-    }
-
-    if (optimizedResume.skills?.soft?.length) {
-      doc
-        .fontSize(10)
-        .text("Soft: " + optimizedResume.skills.soft.join(", "))
-        .moveDown();
-    }
-
-    /* ---------- EXPERIENCE ---------- */
-    sectionTitle(doc, "EXPERIENCE");
-
-    optimizedResume.experience?.forEach((exp) => {
-      doc
-        .fontSize(11)
-        .text(`${exp.role} — ${exp.company}`, { bold: true });
-      doc.fontSize(9).text(exp.duration || "").moveDown(0.3);
-
-      exp.bullets?.forEach((bullet) => {
-        doc.fontSize(10).text(`• ${bullet}`, { indent: 15 });
-      });
-
-      doc.moveDown();
+    const doc = new PDFDocument({ 
+      size: "A4", 
+      margin: 72, // Standard 1-inch margin for ATS
+      bufferPages: true 
     });
 
-    /* ---------- EDUCATION ---------- */
-    if (optimizedResume.education?.length) {
-      sectionTitle(doc, "EDUCATION");
+    const { header } = optimizedResume;
 
-      optimizedResume.education.forEach((edu) => {
-        doc
-          .fontSize(10)
-          .text(edu)
-          .moveDown(0.3);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "attachment; filename=ATSFriendly_Resume.pdf");
+    doc.pipe(res);
+
+    /* ---------- 1. HEADER ---------- */
+    
+    doc.fontSize(20).font("Helvetica-Bold").text(header.name.toUpperCase(), { align: "center" });
+    doc.fontSize(10).font("Helvetica").text(
+      `${header.email} | ${header.phone} | ${header.location}\n${header.linkedin}`,
+      { align: "center" }
+    );
+    doc.moveDown(1.5);
+
+    /* ---------- HELPER: SECTION TITLE ---------- */
+    const addSectionTitle = (title) => {
+      doc.fontSize(12).font("Helvetica-Bold").text(title.toUpperCase());
+      doc.moveTo(72, doc.y).lineTo(523, doc.y).stroke();
+      doc.moveDown(0.5);
+    };
+
+    /* ---------- 2. SUMMARY ---------- */
+    addSectionTitle("Professional Summary");
+    doc.fontSize(10).font("Helvetica").text(optimizedResume.summary, { align: "justify", lineGap: 2 });
+    doc.moveDown(1.2);
+
+    /* ---------- 3. SKILLS ---------- */
+    addSectionTitle("Technical Skills");
+    optimizedResume.skills.technical.forEach(skillSet => {
+      doc.fontSize(10).font("Helvetica").text(`• ${skillSet}`, { lineGap: 1 });
+    });
+    doc.moveDown(0.5);
+    doc.fontSize(10).font("Helvetica-Bold").text("Soft Skills: ", { continued: true })
+       .font("Helvetica").text(optimizedResume.skills.soft.join(", "));
+    doc.moveDown(1.2);
+
+    /* ---------- 4. EXPERIENCE ---------- */
+    addSectionTitle("Work Experience");
+    optimizedResume.experience.forEach(exp => {
+      doc.fontSize(11).font("Helvetica-Bold").text(exp.role, { continued: true })
+         .font("Helvetica").text(` | ${exp.company}`, { align: "left" });
+      doc.fontSize(9).font("Helvetica-Oblique").text(`${exp.location} | ${exp.duration}`).moveDown(0.3);
+      
+      exp.bullets.forEach(bullet => {
+        doc.fontSize(10).font("Helvetica").text(`• ${bullet}`, { indent: 15, lineGap: 1 });
       });
+      doc.moveDown(0.8);
+    });
+
+    /* ---------- 5. PROJECTS ---------- */
+    addSectionTitle("Projects");
+    optimizedResume.projects.forEach((proj, index) => {
+    // 1. Render Title and Tech on the same line or tightly packed
+    doc.fontSize(11).font("Helvetica-Bold").text(proj.title, { lineGap: 0 });
+    doc.fontSize(9).font("Helvetica-Oblique").text(`Technologies: ${proj.technologies}`, { lineGap: 0 });
+    
+    // Minimal gap before bullets
+    doc.moveDown(0.2);
+
+    // 2. Only render bullets if they actually contain text
+    proj.bullets.forEach(bullet => {
+      if (bullet && bullet.trim().length > 0) {
+        doc.fontSize(10).font("Helvetica").text(`• ${bullet}`, { 
+          indent: 15, 
+          lineGap: 0,      // Remove compounded line gaps
+          paragraphGap: 2  // Use paragraphGap for small space between bullets only
+        });
+      }
+    });
+
+    // 3. Conditional moveDown: Don't add extra space after the last project
+    if (index < optimizedResume.projects.length - 1) {
+      doc.moveDown(0.6); // Controlled space between projects
     }
+  });
 
-    /* ---------- PROJECTS ---------- */
-    if (optimizedResume.projects?.length) {
-      sectionTitle(doc, "PROJECTS");
+    /* ---------- 6. EDUCATION ---------- */
+    addSectionTitle("Education");
+    optimizedResume.education.forEach(edu => {
+      doc.fontSize(11).font("Helvetica-Bold").text(edu.institution);
+      doc.fontSize(10).font("Helvetica").text(`${edu.degree} | GPA: ${edu.gpa}`);
+      doc.fontSize(9).font("Helvetica-Oblique").text(edu.duration).moveDown(0.5);
+    });
+    doc.moveDown(0.8);
 
-      optimizedResume.projects.forEach((proj) => {
-        doc.fontSize(10).text(`• ${proj}`);
+    /* ---------- 7. CERTIFICATIONS & AWARDS ---------- */
+    if (optimizedResume.certifications_awards?.length) {
+      addSectionTitle("Certifications & Awards");
+      optimizedResume.certifications_awards.forEach(award => {
+        doc.fontSize(10).font("Helvetica").text(`• ${award}`, { lineGap: 2 });
       });
     }
 
     doc.end();
-
   } catch (error) {
-    console.error("PDF Export Error:", error);
-    res.status(500).json({
-      error: "Failed to generate PDF",
-      details: error.message,
-    });
+    console.error("Standard PDF Generation Error:", error);
+    res.status(500).json({ error: "Failed to generate standard resume" });
   }
 };
-
-/* ---------- HELPER ---------- */
-function sectionTitle(doc, title) {
-  doc
-    .fontSize(12)
-    .text(title)
-    .moveDown(0.3);
-
-  doc
-    .moveTo(50, doc.y)
-    .lineTo(550, doc.y)
-    .stroke();
-
-  doc.moveDown(0.8);
-}
