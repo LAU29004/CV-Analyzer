@@ -86,14 +86,63 @@ export const exportStandardResume = async (req, res) => {
     }
   });
 
-    /* ---------- 6. EDUCATION ---------- */
-    addSectionTitle("Education");
-    optimizedResume.education.forEach(edu => {
-      doc.fontSize(11).font("Helvetica-Bold").text(edu.institution);
-      doc.fontSize(10).font("Helvetica").text(`${edu.degree} | GPA: ${edu.gpa}`);
-      doc.fontSize(9).font("Helvetica-Oblique").text(edu.duration).moveDown(0.5);
+/* ---------- EDUCATION (STYLE B - BALANCED PROFESSIONAL) ---------- */
+if (optimizedResume.education?.length) {
+  addSectionTitle("Education");
+
+  optimizedResume.education.forEach((edu, index) => {
+    // Build a clean header line: Institution — Degree | GPA | Duration
+    let headerParts = [edu.institution];
+    let degreeParts = [];
+
+    if (edu.degree) degreeParts.push(edu.degree);
+    if (edu.gpa) degreeParts.push(`GPA: ${edu.gpa}`);
+    if (edu.duration) degreeParts.push(edu.duration);
+
+    const degreeLine = degreeParts.join(" | ");
+
+    // Output Institution
+    doc.fontSize(11)
+      .font("Helvetica-Bold")
+      .text(headerParts.join(" "), { lineGap: 1 });
+
+    // Output Degree + GPA + Duration (same line block)
+    doc.fontSize(10)
+      .font("Helvetica")
+      .text(degreeLine, { lineGap: 1 });
+
+    // Academic Highlights → Bullet list
+    let bullets = edu.highlights || [];
+
+    // ESTIMATION: figure out how much vertical space bullets will take
+    const bulletHeight = bullets.length * 12 + 10;
+    const bottom = doc.page.height - doc.page.margins.bottom;
+
+    // If bullets would overflow page → trim instead of new page (one-page rule)
+    if (doc.y + bulletHeight > bottom) {
+      bullets = bullets.slice(0, 2); // keep 2 most relevant bullets for freshers
+    }
+
+    bullets.forEach(b => {
+      // Clean bullet punctuation
+      const cleaned = b.replace(/^\s*[\.\-•]+/, "").trim();
+      doc.fontSize(9)
+        .font("Helvetica")
+        .text(`• ${cleaned}`, {
+          indent: 12,
+          lineGap: 1.1
+        });
     });
-    doc.moveDown(0.8);
+
+    // Space between multiple education entries (rare for freshers)
+    if (index < optimizedResume.education.length - 1) {
+      doc.moveDown(0.5);
+    }
+  });
+
+  // Controlled spacing before next section
+  doc.moveDown(0.8);
+}
 
     /* ---------- 7. CERTIFICATIONS & AWARDS ---------- */
     if (optimizedResume.certifications_awards?.length) {
