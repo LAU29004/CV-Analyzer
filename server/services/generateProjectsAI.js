@@ -1,57 +1,124 @@
-import { model } from "../config/gemini.js";
-import { retry } from "../utils/retry.js";
+import crypto from "crypto";
 
-export const generateProjectsAI = async ({ role, skills, industry }) => {
-  // Infer industry if not provided
-  let inferred = industry;
-  if (!inferred) {
-    if (role.includes("Frontend") || role.includes("Backend")) inferred = "Tech";
-    if (role.includes("Finance") || role.includes("Analyst")) inferred = "FinTech";
-    if (role.includes("Healthcare")) inferred = "HealthTech";
-    if (role.includes("AI") || role.includes("ML")) inferred = "AI/ML";
+const hash = (str) =>
+  crypto.createHash("md5").update(str).digest("hex");
+
+/* Rotate index based on skills + role + date */
+const getRotationIndex = ({ role, skills }) => {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const signature = `${role}-${skills.join(",")}-${today}`;
+  const h = hash(signature);
+  return parseInt(h.slice(0, 8), 16);
+};
+
+export const generateProjectsAI = async ({ role, skills }) => {
+  const r = role.toLowerCase();
+  const rotation = getRotationIndex({ role, skills });
+
+  /* ================= MECHANICAL ================= */
+  if (r.includes("mechanical")) {
+    const pool = [
+      {
+        title: "Mechanical Component Design and CAD Modeling",
+        bullets: [
+          "Designed mechanical components using CAD tools following engineering standards",
+          "Created detailed 2D and 3D models to validate form, fit, and function",
+          "Optimized designs for manufacturability and material efficiency"
+        ]
+      },
+      {
+        title: "Product Design and Manufacturing Process Analysis",
+        bullets: [
+          "Analyzed product designs for strength, durability, and reliability",
+          "Evaluated manufacturing processes for cost-effective production",
+          "Prepared technical drawings and fabrication documentation"
+        ]
+      },
+      {
+        title: "Thermal Engineering and Heat Transfer Analysis",
+        bullets: [
+          "Analyzed thermal behavior of mechanical systems using thermodynamics principles",
+          "Studied heat transfer mechanisms and material performance",
+          "Documented findings to support design improvements"
+        ]
+      },
+      {
+        title: "Mechanical Systems and Material Selection Study",
+        bullets: [
+          "Evaluated material properties for mechanical system applications",
+          "Performed comparative analysis to select optimal materials",
+          "Prepared technical justification for material selection"
+        ]
+      },
+      {
+        title: "Manufacturing Process Planning and Optimization",
+        bullets: [
+          "Studied machining and fabrication processes for mechanical components",
+          "Optimized process flow to reduce production time and cost",
+          "Documented process plans and quality considerations"
+        ]
+      }
+    ];
+
+    /* Pick 2 projects with rotation */
+    const first = pool[rotation % pool.length];
+    const second = pool[(rotation + 1) % pool.length];
+
+    return [
+      {
+        title: first.title,
+        technologies: skills.join(", "),
+        bullets: first.bullets
+      },
+      {
+        title: second.title,
+        technologies: skills.join(", "),
+        bullets: second.bullets
+      }
+    ];
   }
 
-  const prompt = `
-You are a senior hiring manager and resume specialist.
+  /* ================= DEFAULT (CS / IT / OTHER) ================= */
+  const pool = [
+    {
+      title: "Domain-Oriented Application Development",
+      bullets: [
+        "Developed application features using industry-standard practices",
+        "Applied modular architecture to improve maintainability",
+        "Optimized performance and usability through iterative testing"
+      ]
+    },
+    {
+      title: "System Design and Implementation Project",
+      bullets: [
+        "Designed system architecture based on functional requirements",
+        "Implemented core features with focus on scalability",
+        "Validated functionality through structured testing"
+      ]
+    },
+    {
+      title: "Technology-Based Practical Project",
+      bullets: [
+        "Applied technical skills to solve real-world problems",
+        "Integrated multiple tools and technologies effectively",
+        "Documented implementation and learning outcomes"
+      ]
+    }
+  ];
 
-TASK:
-Generate 2 realistic and unique resume projects for a fresher targeting a ${role} role in the ${inferred} industry.
+  const first = pool[rotation % pool.length];
+  const second = pool[(rotation + 1) % pool.length];
 
-CONTEXT:
-Technical Skills: ${skills.join(", ")}
-Industry: ${inferred}
-
-RULES:
-- Projects must be relevant to the role + industry + skills
-- Each project must be buildable within 2-6 weeks
-- Bullet points must follow ATS format: Action + Impact + Tech
-- No templates
-- Output strictly in JSON format (no markdown)
-
-SCHEMA:
-[
-  {
-    "title": "",
-    "industryAlignment": "", // Explain 1 sentence why it's relevant
-    "technologies": "",
-    "bullets": [
-      "Action/Impact bullet...",
-      "Action/Impact bullet...",
-      "Action/Impact bullet..."
-    ]
-  }
-]
-`;
-
-  const result = await retry(() => model.generateContent(prompt));
-  const response = await result.response;
-  const raw = await response.text();
-
-  try {
-    const cleaned = raw.replace(/```json/g, "").replace(/```/g, "").trim();
-    return JSON.parse(cleaned);
-  } catch (err) {
-    console.error("AI Project JSON Parse Error:", raw);
-    return [];
-  }
+  return [
+    {
+      title: first.title,
+      technologies: skills.join(", "),
+      bullets: first.bullets
+    },
+    {
+      title: second.title,
+      technologies: skills.join(", "),
+      bullets: second.bullets
+    }
+  ];
 };

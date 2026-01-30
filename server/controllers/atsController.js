@@ -1,168 +1,56 @@
 import { createRequire } from "module";
-import { model } from "../config/gemini.js";
 import mammoth from "mammoth";
+import { ENABLE_AI } from "../config/env.js";
+import { safeAI } from "../utils/safeAI.js";
+import { retry } from "../utils/retry.js";
+import { model } from "../config/gemini.js";
 
 const require = createRequire(import.meta.url);
-
-// pdf-parse v2 exports a CLASS
 const { PDFParse } = require("pdf-parse");
-
-// Retry helper function
-const retry = async (fn, retries = 3, delay = 1000) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await fn();
-    } catch (error) {
-      if (i === retries - 1 || !error.message.includes('503')) throw error;
-      console.log(`Attempt ${i + 1} failed, retrying in ${delay}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-      delay *= 2; // Exponential backoff
-    }
-  }
-};
 
 export const analyzeResume = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No resume uploaded" });
-    }
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-    const { buffer, mimetype, originalname } = req.file;
-    let resumeText = "";
-
-    /* ---------- PDF ---------- */
-    if (mimetype === "application/pdf") {
-      const parser = new PDFParse({ data: buffer });
-      const pdfData = await parser.getText();
+    let text = "";
+    if (req.file.mimetype === "application/pdf") {
+      const parser = new PDFParse({ data: req.file.buffer });
+      const pdf = await parser.getText();
       await parser.destroy();
-      resumeText = pdfData.text;
+      text = pdf.text;
+    } else {
+      text = (await mammoth.extractRawText({ buffer: req.file.buffer })).value;
     }
 
-    /* ---------- DOCX ---------- */
-    else if (
-      mimetype ===
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    ) {
-      const result = await mammoth.extractRawText({ buffer });
-      resumeText = result.value;
-    }
+    const fallback = {
+      analysis: {
+        strengths: ["Resume extracted successfully"],
+        weaknesses: ["AI skipped due to quota or invalid response"]
+      },
+      optimizedResume: { note: "Resume ready for formatting" }
+    };
 
-    /* ---------- Unsupported ---------- */
-    else {
-      return res.status(400).json({
-        error: "Only PDF or DOCX files are allowed",
-      });
-    }
+    const result = ENABLE_AI
+      ? await safeAI(
+          async () => {
+            const prompt = `
+Improve formatting and wording only.
+Return STRICT JSON.
 
-    if (!resumeText.trim()) {
-      return res.status(400).json({
-        error: "Failed to extract resume text",
-      });
-    }
-
-    console.log(`Resume extracted: ${originalname}`);
-
-    /* ---------- GEMINI PROMPT ---------- */
-    const prompt = `
-You are an expert ATS resume writer.
-
-TASKS:
-1. Analyze the resume
-2. Identify strengths and weaknesses
-3. Rewrite the resume into ATS-optimized professional format
-4. Improve bullet points using action verbs
-5. Organize content into a clean resume structure
-
-RULES:
-- Return STRICT JSON ONLY
-- No markdown
-- No explanations
-
-JSON FORMAT:
-{
-  "analysis": {
-    "overallScore": 0-100,
-    "issuesCount": number,
-    "strengths": ["min 3"],
-    "weaknesses": ["min 3 with fixes"]
-  },
-  {
-  "optimizedResume": {
-    "header": {
-      "name": "",
-      "email": "",
-      "phone": "",
-      "linkedin": "",
-      "location": "" // ATS often filters by city/state
-    },
-    "summary": "", // Include measurable "career highlights" here
-    "skills": {
-      "technical": [], // Hard skills like "Node.js"
-      "soft": []       // Behavior skills like "Leadership"
-    },
-    "experience": [
-      {
-        "role": "",
-        "company": "",
-        "duration": "",
-        "location": "",
-        "bullets": [] // Each bullet must follow the Action + Result format
-      }
-    ],
-    "education": [
-      {
-        "institution": "",
-        "degree": "",
-        "duration": "",
-        "gpa": "",       // Optional but good for students
-        "highlights": [] // Academic awards or honors
-      }
-    ],
-    "projects": [
-      {
-        "title": "",
-        "technologies": "",
-        "bullets": []    // Focused on your specific contribution
-      }
-    ],
-    "certifications_awards": [] // Critical for high-level screening
-  }
-}
-}
-
-Resume Text:
-<<<
-${resumeText}
->>>
+RESUME:
+${text}
 `;
+            const r = await retry(() => model.generateContent(prompt));
+            return JSON.parse(
+              (await r.response.text()).replace(/```json|```/g, "")
+            );
+          },
+          () => fallback
+        )
+      : fallback;
 
-    const result = await retry(() => model.generateContent(prompt));
-    const response = await result.response;
-    const responseText = await response.text();
-
-    /* ---------- CLEAN & PARSE JSON ---------- */
-    let data;
-    try {
-      const cleaned = responseText
-        .replace(/```json/g, "")
-        .replace(/```/g, "")
-        .trim();
-
-      data = JSON.parse(cleaned);
-    } catch {
-      return res.status(500).json({
-        error: "Invalid AI JSON output",
-        rawResponse: responseText,
-      });
-    }
-
-    res.status(200).json(data);
-
-  } catch (error) {
-    console.error("Resume Analysis Error:", error);
-    res.status(500).json({
-      error: "Resume analysis failed",
-      details: error.message,
-    });
+    res.json(result);
+  } catch {
+    res.status(500).json({ error: "Resume analysis failed" });
   }
 };

@@ -10,8 +10,7 @@ export const generateSoftSkills = (role) => {
   const roleMap = {
     "Frontend Developer": ["UI Awareness", "Attention to Detail"],
     "Backend Developer": ["System Thinking", "Analytical Reasoning"],
-    "Data Analyst": ["Quantitative Reasoning", "Critical Thinking"],
-    "Product Manager": ["Leadership", "Strategic Thinking"],
+    "Data Analyst": ["Critical Thinking", "Quantitative Reasoning"]
   };
 
   return [...common, ...(roleMap[role] || [])];

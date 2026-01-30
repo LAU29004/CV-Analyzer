@@ -46,7 +46,7 @@ function buildStandardResume(resume) {
     alignment: AlignmentType.CENTER,
     children: [
       new TextRun({ 
-        text: `${resume.header.email} | ${resume.header.phone} | ${resume.header.location}`, 
+        text: `${resume.header.email} | ${resume.header.phone} | ${resume.header.location} | ${resume.header.github}`, 
         size: 20 
       }),
     ],
