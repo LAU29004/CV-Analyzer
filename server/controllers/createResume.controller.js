@@ -25,7 +25,7 @@ const educationPriority = {
 const normalizeEducation = (educationList) =>
   educationList.map((edu) => ({
     level: edu.level,
-    institution: edu.institution, // ONLY school / college
+    institution: edu.institution,
     board: edu.board || "",
     degree: edu.degree || "",
     duration: edu.duration || edu.year || "",
@@ -187,15 +187,11 @@ ${JSON.stringify(baseResume, null, 2)}
               model.generateContent(prompt)
             );
 
-            const response = await result.response;
-            const raw = await response.text();
+            const raw = await result.response.text();
             const cleaned = raw.replace(/```json|```/g, "").trim();
             const parsed = JSON.parse(cleaned);
 
-            if (
-              !parsed.optimizedResume ||
-              !parsed.optimizedResume.summary
-            ) {
+            if (!parsed.optimizedResume?.summary) {
               throw new Error("Invalid AI summary");
             }
 

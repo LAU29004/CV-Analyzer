@@ -2,14 +2,11 @@ import PDFDocument from "pdfkit";
 
 export const exportStandardResume = async (req, res) => {
   try {
-    if (!req.body?.optimizedResume) {
-      return res.status(400).json({
-        error: "optimizedResume is required"
-      });
-    }
-
     const { optimizedResume } = req.body;
-    const { header = {} } = optimizedResume;
+
+    if (!optimizedResume || !optimizedResume.header) {
+      return res.status(400).json({ error: "Invalid resume data" });
+    }
 
     const doc = new PDFDocument({
       size: "A4",
@@ -24,11 +21,14 @@ export const exportStandardResume = async (req, res) => {
 
     doc.pipe(res);
 
-    /* ---------- HEADER ---------- */
+    const { header } = optimizedResume;
+
+    /* ================= HEADER ================= */
+
     doc
       .font("Helvetica-Bold")
       .fontSize(20)
-      .text(header.name?.toUpperCase() || "", { align: "center" });
+      .text((header.name || "").toUpperCase(), { align: "center" });
 
     const contactLine = [
       header.email,
@@ -48,114 +48,189 @@ export const exportStandardResume = async (req, res) => {
         .text(contactLine, { align: "center" });
     }
 
-    doc.moveDown(1.5);
+    doc.moveDown(1.2);
 
-    const section = (title) => {
-      doc.font("Helvetica-Bold").fontSize(12).text(title.toUpperCase());
-      doc.moveTo(72, doc.y).lineTo(523, doc.y).stroke();
+    /* ================= HELPERS ================= */
+
+    const sectionTitle = (title) => {
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(12)
+        .text(title.toUpperCase());
+      doc
+        .moveTo(doc.page.margins.left, doc.y)
+        .lineTo(doc.page.width - doc.page.margins.right, doc.y)
+        .stroke();
       doc.moveDown(0.6);
     };
 
-    /* ---------- SUMMARY ---------- */
+    const renderBullets = (items) => {
+      items.forEach((b) => {
+        if (b && b.trim()) {
+          doc
+            .font("Helvetica")
+            .fontSize(10)
+            .text(`• ${b}`, { indent: 14 });
+        }
+      });
+    };
+
+    /* ================= SUMMARY ================= */
+
     if (optimizedResume.summary) {
-      section("Professional Summary");
-      doc.fontSize(10).font("Helvetica")
-        .text(optimizedResume.summary, { align: "justify" });
+      sectionTitle("Professional Summary");
+      doc
+        .font("Helvetica")
+        .fontSize(10)
+        .text(optimizedResume.summary, {
+          align: "justify",
+          lineGap: 2
+        });
       doc.moveDown(1);
     }
 
-    /* ---------- SKILLS ---------- */
+    /* ================= SKILLS ================= */
+
     if (
       optimizedResume.skills?.technical?.length ||
       optimizedResume.skills?.soft?.length
     ) {
-      section("Skills");
+      sectionTitle("Skills");
 
-      if (optimizedResume.skills.technical?.length) {
-        doc.font("Helvetica-Bold").text("Technical Skills: ", { continued: true });
-        doc.font("Helvetica")
-          .text(optimizedResume.skills.technical.join(", "));
+      if (optimizedResume.skills?.technical?.length) {
+        const techSkills = optimizedResume.skills.technical
+          .map((skill) => {
+            if (typeof skill === "string") return skill;
+            if (typeof skill === "object" && skill.name) {
+              return skill.level
+                ? `${skill.name} (${skill.level})`
+                : skill.name;
+            }
+            return "";
+          })
+          .filter(Boolean)
+          .join(", ");
+
+        if (techSkills) {
+          doc
+            .font("Helvetica-Bold")
+            .fontSize(10)
+            .text("Technical Skills: ", { continued: true });
+          doc
+            .font("Helvetica")
+            .text(techSkills);
+          doc.moveDown(0.4);
+        }
       }
 
-      if (optimizedResume.skills.soft?.length) {
-        doc.moveDown(0.3);
-        doc.font("Helvetica-Bold").text("Soft Skills: ", { continued: true });
-        doc.font("Helvetica")
+      if (optimizedResume.skills?.soft?.length) {
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(10)
+          .text("Soft Skills: ", { continued: true });
+        doc
+          .font("Helvetica")
           .text(optimizedResume.skills.soft.join(", "));
+        doc.moveDown(1);
       }
-
-      doc.moveDown(1);
     }
 
-    /* ---------- EXPERIENCE ---------- */
+    /* ================= EXPERIENCE ================= */
+
     if (optimizedResume.experience?.length) {
-      section("Work Experience");
+      sectionTitle("Work Experience");
 
       optimizedResume.experience.forEach((exp) => {
-        doc.font("Helvetica-Bold").fontSize(11)
-          .text(`${exp.role} | ${exp.company}`);
-        doc.font("Helvetica-Oblique").fontSize(9)
-          .text(`${exp.location || ""} ${exp.duration || ""}`);
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(11)
+          .text(exp.title || exp.role || "");
 
-        exp.bullets?.forEach((b) => {
-          doc.font("Helvetica").fontSize(10)
-            .text(`• ${b}`, { indent: 15 });
-        });
+        doc
+          .font("Helvetica-Oblique")
+          .fontSize(9)
+          .text(
+            [exp.company, exp.location, exp.date || exp.duration]
+              .filter(Boolean)
+              .join(" | ")
+          );
 
+        doc.moveDown(0.3);
+
+        renderBullets(exp.description || exp.bullets || []);
         doc.moveDown(0.8);
       });
     }
 
-    /* ---------- PROJECTS ---------- */
+    /* ================= PROJECTS ================= */
+
     if (optimizedResume.projects?.length) {
-      section("Projects");
+      sectionTitle("Projects");
 
-      optimizedResume.projects.forEach((p) => {
-        doc.font("Helvetica-Bold").fontSize(11).text(p.title);
-        doc.font("Helvetica-Oblique").fontSize(9)
-          .text(`Technologies: ${p.technologies}`);
+      optimizedResume.projects.forEach((proj, idx) => {
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(11)
+          .text(proj.title || proj.name || "");
 
-        p.bullets?.forEach((b) => {
-          doc.font("Helvetica").fontSize(10)
-            .text(`• ${b}`, { indent: 15 });
-        });
+        if (proj.technologies) {
+          doc
+            .font("Helvetica-Oblique")
+            .fontSize(9)
+            .text(`Technologies: ${proj.technologies}`);
+        }
 
-        doc.moveDown(0.6);
+        doc.moveDown(0.3);
+        renderBullets(proj.description || proj.bullets || []);
+
+        if (idx < optimizedResume.projects.length - 1) {
+          doc.moveDown(0.6);
+        }
       });
     }
 
-    /* ---------- EDUCATION ---------- */
+    /* ================= EDUCATION ================= */
+
     if (optimizedResume.education?.length) {
-      section("Education");
+      sectionTitle("Education");
 
       optimizedResume.education.forEach((edu) => {
-        doc.font("Helvetica-Bold").fontSize(11)
-          .text(edu.institution);
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(11)
+          .text(edu.institution || "");
 
-        const eduLine = [
-          edu.degree || edu.level,
+        const meta = [
+          edu.degree,
           edu.board,
-          edu.score,
-          edu.duration
-        ].filter(Boolean).join(" | ");
+          edu.score || edu.gpa,
+          edu.duration || edu.dates
+        ]
+          .filter(Boolean)
+          .join(" | ");
 
-        doc.font("Helvetica").fontSize(10).text(eduLine);
+        if (meta) {
+          doc
+            .font("Helvetica")
+            .fontSize(10)
+            .text(meta);
+        }
+
         doc.moveDown(0.6);
       });
     }
 
-    /* ---------- CERTIFICATIONS ---------- */
-    if (optimizedResume.certifications_awards?.length) {
-      section("Certifications & Awards");
+    /* ================= CERTIFICATIONS ================= */
 
-      optimizedResume.certifications_awards.forEach((c) => {
-        doc.font("Helvetica").fontSize(10).text(`• ${c}`);
-      });
+    if (optimizedResume.certifications_awards?.length) {
+      sectionTitle("Certifications");
+
+      renderBullets(optimizedResume.certifications_awards);
     }
 
     doc.end();
   } catch (err) {
-    console.error("PDF Error:", err);
-    res.status(500).json({ error: "Failed to generate PDF" });
+    console.error("Standard PDF Generation Error:", err);
+    res.status(500).json({ error: "Failed to generate resume PDF" });
   }
 };

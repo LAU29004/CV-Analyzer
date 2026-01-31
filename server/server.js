@@ -5,7 +5,20 @@ import publicRoutes from "./routes/publicRoutes.js";
 
 const app = express();
 
-app.use(cors());
+/* ================== CORS CONFIG ================== */
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173", // Vite
+      "http://localhost:3000"  // CRA / Next
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true
+  })
+);
+/* ================================================ */
+
 app.use(express.json());
 
 app.get("/", (req, res) => {
