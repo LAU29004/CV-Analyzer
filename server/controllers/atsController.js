@@ -5,6 +5,25 @@ import { safeAI } from "../utils/safeAI.js";
 import { retry } from "../utils/retry.js";
 import { model } from "../config/gemini.js";
 
+const safeParseJSON = (text) => {
+  try {
+    const cleaned = text
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
+
+    // Extract first JSON object only
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error("No JSON found");
+
+    return JSON.parse(match[0]);
+  } catch (err) {
+    console.error("❌ AI JSON Parse Failed");
+    console.error(text);
+    throw err;
+  }
+};
+
 const require = createRequire(import.meta.url);
 const { PDFParse } = require("pdf-parse");
 
@@ -164,9 +183,14 @@ ${resumeText}
             );
 
             const raw = await result.response.text();
-            const parsed = JSON.parse(
-              raw.replace(/```json|```/g, "").trim()
-            );
+let parsed;
+
+try {
+  parsed = safeParseJSON(raw);
+} catch (err) {
+  return fallback;
+}
+
 
             const mergedResume = {
               ...baseOptimizedResume,

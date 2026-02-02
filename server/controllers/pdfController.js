@@ -61,13 +61,28 @@ export const exportStandardResume = async (req, res) => {
       doc.moveDown(0.6);
     };
 
-    const renderBullets = (items) => {
-      items.forEach((b) => {
-        if (b && b.trim()) {
-          doc.font("Helvetica").fontSize(10).text(`• ${b}`, { indent: 14 });
-        }
-      });
-    };
+    function renderBullets(doc, bullets = []) {
+  if (!Array.isArray(bullets)) return;
+
+  bullets.forEach((b) => {
+    // Normalize bullet to string
+    let text = "";
+
+    if (typeof b === "string") {
+      text = b;
+    } else if (typeof b === "object" && b !== null) {
+      // Handle AI objects safely
+      text = b.text || b.content || JSON.stringify(b);
+    } else {
+      text = String(b);
+    }
+
+    if (!text.trim()) return;
+
+    doc.text(`• ${text.trim()}`);
+  });
+}
+
 
     /* ================= SUMMARY ================= */
 

@@ -113,14 +113,6 @@ type ValidationErrors = {
   technical?: boolean;
 };
 
-const atsScoreData = [
-  {
-    name: "ATS Score",
-    value: 85,
-    fill: "url(#gradientATS)",
-  },
-];
-
 export function Dashboard() {
   const [userType, setUserType] = useState<"experienced" | "beginner">(
     "experienced",
@@ -135,12 +127,22 @@ export function Dashboard() {
   const [loading, setLoading] = useState(false);
 
   const [useAI, setUseAI] = useState(true);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [atsResult, setAtsResult] = useState<any>(null);
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
 
   // Add state for project suggestions
-  const [projectSuggestions, setProjectSuggestions] = useState<SuggestedProject[]>([]);
+  const [projectSuggestions, setProjectSuggestions] = useState<
+    SuggestedProject[]
+  >([]);
 
+  const atsScoreData = atsResult
+    ? [{ name: "ATS Score", value: atsResult.overall }]
+    : [{ name: "ATS Score", value: 0 }];
   // Add validation errors state
-  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
+    {},
+  );
   const [showErrors, setShowErrors] = useState(false);
 
   const [form, setForm] = useState<FormState>({
@@ -167,6 +169,19 @@ export function Dashboard() {
     projects: [],
     certifications: "",
   });
+
+  const ATS_MAX = {
+    contact: 10,
+    sections: 15,
+    keywords: 25,
+    readability: 15,
+    formatting: 10,
+  };
+
+  const toPercent = (value?: number, max?: number) => {
+    if (!value || !max) return 0;
+    return Math.round((value / max) * 100);
+  };
 
   const validateForm = (): boolean => {
     const errors: ValidationErrors = {};
@@ -376,75 +391,139 @@ export function Dashboard() {
   };
 
   const handleGenerateResume = async () => {
-    // Validate form if in beginner mode
-    if (userType === "beginner" && !validateForm()) {
-      // Scroll to first error
-      const firstErrorElement = document.querySelector('[data-error="true"]');
-      if (firstErrorElement) {
-        firstErrorElement.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-      return;
-    }
+    console.group("🚀 handleGenerateResume()");
+    console.log("User Type:", userType);
 
     try {
       setLoading(true);
+      console.log("⏳ Loading set to true");
 
-      const payload = buildPayload();
-      console.log("Payload being sent:", JSON.stringify(payload, null, 2));
+      /* ================================
+       EXPERIENCED FLOW
+    ================================= */
+      if (userType === "experienced") {
+        console.group("👔 Experienced Flow");
 
-      const res = await axios.post(
-        "http://localhost:4000/api/public/create-resume",
-        payload,
-      );
-
-      console.log("Backend Response:", res.data);
-
-      const resume: OptimizedResume = res.data.optimizedResume;
-
-      // Extract project suggestions
-      const suggestions =
-        res.data.projectSuggestions ||
-        res.data.changeLog?.projectSuggestions ||
-        res.data.changeLog?.projects;
-
-      if (Array.isArray(suggestions) && suggestions.length > 0) {
-        console.log("Project suggestions received:", suggestions);
-        setProjectSuggestions(suggestions);
-
-        // Switch UI to Beginner mode if no experience was provided
-        if (!payload.experience || payload.experience.length === 0) {
-          setUserType("beginner");
+        if (!resumeFile) {
+          alert("Please upload your resume first");
+          console.groupEnd();
+          return;
         }
-      } else {
-        setProjectSuggestions([]);
+
+        const formData = new FormData();
+        formData.append("resume", resumeFile);
+
+        const res = await axios.post(
+          "http://localhost:4000/api/public/analyze",
+          formData,
+          {
+            headers: { "Content-Type": "multipart/form-data" },
+          },
+        );
+
+        console.log("✅ Analyze API Response:", res.data);
+
+        const { optimizedResume, atsScore, analysis } = res.data;
+
+        setGeneratedResume(optimizedResume || null);
+        setAtsResult(atsScore || null);
+
+        setAiSuggestions(
+          analysis?.weaknesses && Array.isArray(analysis.weaknesses)
+            ? analysis.weaknesses
+            : [],
+        );
+
+        if (optimizedResume?.header?.name) {
+          await generateAndPreviewPDF(optimizedResume);
+        }
+
+        console.groupEnd();
+        return;
       }
 
-      setGeneratedResume(resume);
+      /* ================================
+       BEGINNER FLOW
+    ================================= */
+      if (userType === "beginner") {
+        console.group("🎓 Beginner Flow");
 
-      // Generate & preview PDF only when resume is valid
-      if (resume?.header?.name) {
-        await generateAndPreviewPDF(resume);
-      } else {
-        console.warn("PDF generation skipped: invalid resume header");
+        console.log("🧪 Validating form...");
+        if (!validateForm()) {
+          console.error("❌ Form validation failed");
+          console.groupEnd();
+          return;
+        }
+
+        console.log("✅ Form validation passed");
+
+        const payload = buildPayload();
+        console.log("📦 Payload being sent:", payload);
+
+        console.log("➡️ Calling /api/public/create-resume");
+
+        const res = await axios.post(
+          "http://localhost:4000/api/public/create-resume",
+          payload,
+        );
+
+        console.log("✅ Create Resume API Response:", res.data);
+
+        const { optimizedResume, atsScore, analysis } = res.data;
+
+        console.log("📄 Optimized Resume:", optimizedResume);
+        console.log("💡 Project Suggestions:", projectSuggestions);
+        console.log("📝 Change Log:", changeLog);
+
+        setGeneratedResume(optimizedResume || null);
+        console.log("📄 Resume state updated");
+
+        setProjectSuggestions(
+          projectSuggestions || changeLog?.projectSuggestions || [],
+        );
+        console.log("💡 Project suggestions set");
+
+        if (payload.experience?.length) {
+          console.log("🔄 Experience detected, switching to experienced mode");
+          setUserType("experienced");
+        }
+
+        if (optimizedResume?.header?.name) {
+          console.log("🖨 Generating PDF preview...");
+          await generateAndPreviewPDF(optimizedResume);
+          console.log("✅ PDF preview generated");
+        } else {
+          console.warn("⚠️ PDF skipped: invalid resume header");
+        }
+
+        setValidationErrors({});
+        setShowErrors(false);
+        console.log("🧹 Validation errors cleared");
+
+        console.groupEnd();
       }
-
-      // Clear errors on successful generation
-      setShowErrors(false);
-      setValidationErrors({});
     } catch (err) {
-      console.error("Resume generation failed", err);
+      console.group("🔥 ERROR");
+
+      console.error("❌ Resume generation failed:", err);
 
       if (axios.isAxiosError(err)) {
-        console.error("Backend error:", err.response?.data);
+        console.error("📛 Backend Error Response:", err.response?.data);
+        console.error("📛 Status Code:", err.response?.status);
+
         alert(
           err.response?.data?.message ||
-            "Failed to generate resume. Please check your input and try again."
+            "Backend error while processing resume.",
         );
       } else {
-        alert("An unexpected error occurred. Please try again.");
+        alert("Unexpected error occurred. Please try again.");
       }
+
+      console.groupEnd();
     } finally {
       setLoading(false);
+      console.log("✅ Loading set to false");
+      console.groupEnd();
     }
   };
 
@@ -498,7 +577,10 @@ export function Dashboard() {
     }
   };
 
-  const getInputClassName = (fieldName: keyof ValidationErrors, baseClassName: string) => {
+  const getInputClassName = (
+    fieldName: keyof ValidationErrors,
+    baseClassName: string,
+  ) => {
     const hasError = showErrors && validationErrors[fieldName];
     return `${baseClassName} ${hasError ? "border-red-500 focus:border-red-500" : "border-white/10 focus:border-violet-500/50"}`;
   };
@@ -574,17 +656,24 @@ export function Dashboard() {
                   <Upload className="w-5 h-5 text-violet-400" />
                   Upload Resume
                 </h3>
-                <div className="border-2 border-dashed border-violet-500/30 rounded-xl p-8 text-center hover:border-violet-500/50 transition-colors cursor-pointer group">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 p-4 group-hover:scale-110 transition-transform">
-                    <Upload className="w-full h-full text-white" />
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  className="hidden"
+                  id="resumeUpload"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) {
+                      setResumeFile(e.target.files[0]);
+                    }
+                  }}
+                />
+
+                <label htmlFor="resumeUpload" className="cursor-pointer">
+                  <div className="border-2 border-dashed ...">
+                    <Upload />
+                    <p>{resumeFile ? resumeFile.name : "Upload your resume"}</p>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Drag & drop your resume here
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    PDF, DOC, DOCX up to 10MB
-                  </p>
-                </div>
+                </label>
               </div>
             ) : (
               <div className="p-6 rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-sm">
@@ -625,13 +714,15 @@ export function Dashboard() {
                             placeholder="Full Name *"
                             className={getInputClassName(
                               "full_name",
-                              "w-full px-4 py-3 rounded-xl bg-white/5 outline-none text-sm"
+                              "w-full px-4 py-3 rounded-xl bg-white/5 outline-none text-sm",
                             )}
                             value={form.full_name}
                             onChange={(e) =>
                               handleChange(["full_name"], e.target.value)
                             }
-                            data-error={showErrors && validationErrors.full_name}
+                            data-error={
+                              showErrors && validationErrors.full_name
+                            }
                           />
                           {showErrors && validationErrors.full_name && (
                             <p className="text-xs text-red-400 mt-1 ml-1">
@@ -646,7 +737,7 @@ export function Dashboard() {
                             placeholder="Role / Desired Job Title * (e.g., Frontend Developer)"
                             className={getInputClassName(
                               "role",
-                              "w-full px-4 py-3 rounded-xl bg-white/5 outline-none text-sm"
+                              "w-full px-4 py-3 rounded-xl bg-white/5 outline-none text-sm",
                             )}
                             value={form.role}
                             onChange={(e) =>
@@ -667,7 +758,7 @@ export function Dashboard() {
                             placeholder="Email Address *"
                             className={getInputClassName(
                               "email",
-                              "w-full px-4 py-3 rounded-xl bg-white/5 outline-none text-sm"
+                              "w-full px-4 py-3 rounded-xl bg-white/5 outline-none text-sm",
                             )}
                             value={form.email}
                             onChange={(e) =>
@@ -947,7 +1038,7 @@ export function Dashboard() {
                             placeholder="Technical Skills * (comma separated, e.g., React, Node.js, Python)"
                             className={getInputClassName(
                               "technical",
-                              "w-full px-4 py-3 rounded-xl bg-white/5 outline-none text-sm"
+                              "w-full px-4 py-3 rounded-xl bg-white/5 outline-none text-sm",
                             )}
                             value={form.skills.technical}
                             onChange={(e) =>
@@ -956,7 +1047,9 @@ export function Dashboard() {
                                 e.target.value,
                               )
                             }
-                            data-error={showErrors && validationErrors.technical}
+                            data-error={
+                              showErrors && validationErrors.technical
+                            }
                           />
                           {showErrors && validationErrors.technical && (
                             <p className="text-xs text-red-400 mt-1 ml-1">
@@ -1311,54 +1404,115 @@ export function Dashboard() {
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="text-center">
                           <div className="text-4xl bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
-                            85%
+                            {atsResult?.overall ?? "--"}%
                           </div>
                           <div className="text-xs text-muted-foreground">
                             ATS Score
                           </div>
                         </div>
                       </div>
+                      {atsResult?.missing?.map((m: string, i: number) => (
+                        <div key={i} className="text-sm text-red-400">
+                          ⚠ {m}
+                        </div>
+                      ))}
                     </div>
                   </div>
 
                   {/* Quick Stats */}
                   <div className="space-y-4">
+                    {/* Keyword Match */}
                     <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-muted-foreground">
                           Keyword Match
                         </span>
-                        <span className="text-green-400">92%</span>
+                        <span className="text-green-400">
+                          {toPercent(
+                            atsResult?.breakdown?.keywords,
+                            ATS_MAX.keywords,
+                          )}
+                          %
+                        </span>
                       </div>
+
                       <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                        <div className="h-full w-[92%] bg-gradient-to-r from-green-500 to-emerald-500 rounded-full" />
+                        <div
+                          className="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full transition-all"
+                          style={{
+                            width: `${toPercent(
+                              atsResult?.breakdown?.keywords,
+                              ATS_MAX.keywords,
+                            )}%`,
+                          }}
+                        />
                       </div>
                     </div>
 
+                    {/* Formatting */}
                     <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-muted-foreground">
                           Format Score
                         </span>
-                        <span className="text-cyan-400">88%</span>
+                        <span className="text-cyan-400">
+                          {toPercent(
+                            atsResult?.breakdown?.formatting,
+                            ATS_MAX.formatting,
+                          )}
+                          %
+                        </span>
                       </div>
+
                       <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                        <div className="h-full w-[88%] bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full" />
+                        <div
+                          className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all"
+                          style={{
+                            width: `${toPercent(
+                              atsResult?.breakdown?.formatting,
+                              ATS_MAX.formatting,
+                            )}%`,
+                          }}
+                        />
                       </div>
                     </div>
 
+                    {/* Experience / Readability */}
                     <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-muted-foreground">
                           Experience Match
                         </span>
-                        <span className="text-violet-400">78%</span>
+                        <span className="text-violet-400">
+                          {toPercent(
+                            atsResult?.breakdown?.readability,
+                            ATS_MAX.readability,
+                          )}
+                          %
+                        </span>
                       </div>
+
                       <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                        <div className="h-full w-[78%] bg-gradient-to-r from-violet-500 to-purple-500 rounded-full" />
+                        <div
+                          className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full transition-all"
+                          style={{
+                            width: `${toPercent(
+                              atsResult?.breakdown?.readability,
+                              ATS_MAX.readability,
+                            )}%`,
+                          }}
+                        />
                       </div>
                     </div>
                   </div>
+                  {/* Contact & Sections (ATS details) */}
+<p className="text-xs text-muted-foreground text-center">
+  Contact Info:{" "}
+  {toPercent(atsResult?.breakdown?.contact, ATS_MAX.contact)}% •{" "}
+  Sections:{" "}
+  {toPercent(atsResult?.breakdown?.sections, ATS_MAX.sections)}%
+</p>
+
                 </div>
               </div>
             ) : (
@@ -1450,24 +1604,57 @@ export function Dashboard() {
               </h3>
               <div className="space-y-3">
                 {userType === "experienced" ? (
-                  [
-                    "Add more specific metrics to quantify your achievements",
-                    'Include "TypeScript" in your technical skills section',
-                    "Highlight your experience with agile methodologies",
-                    "Add a brief summary section at the top of your resume",
-                  ].map((suggestion, i) => (
-                    <div
-                      key={i}
-                      className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-violet-500/30 transition-colors"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center shrink-0 mt-0.5">
-                          <span className="text-xs">{i + 1}</span>
-                        </div>
-                        <p className="text-sm">{suggestion}</p>
+                  <>
+                    {/* ATS-based suggestions */}
+                    {atsResult?.missing?.length > 0 && (
+                      <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                          ATS Improvements
+                        </p>
+
+                        {atsResult.missing.map((m: string, i: number) => (
+                          <div
+                            key={`ats-${i}`}
+                            className="p-4 rounded-xl bg-red-500/10 border border-red-500/30"
+                          >
+                            ⚠ {m}
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                  ))
+                    )}
+
+                    {/* AI-based suggestions */}
+                    {aiSuggestions.length > 0 && (
+                      <div className="space-y-3 mt-4">
+                        <p className="text-sm text-muted-foreground">
+                          AI Content Suggestions
+                        </p>
+
+                        {aiSuggestions.map((s: string, i: number) => (
+                          <div
+                            key={`ai-${i}`}
+                            className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-violet-500/30 transition-colors"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center shrink-0 mt-0.5">
+                                <span className="text-xs">{i + 1}</span>
+                              </div>
+                              <p className="text-sm">{s}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Empty state */}
+                    {!atsResult?.missing?.length &&
+                      aiSuggestions.length === 0 && (
+                        <p className="text-sm text-muted-foreground">
+                          Your resume looks solid! No major optimization issues
+                          detected.
+                        </p>
+                      )}
+                  </>
                 ) : projectSuggestions.length > 0 ? (
                   projectSuggestions.map((project, i) => (
                     <div
@@ -1481,7 +1668,10 @@ export function Dashboard() {
                       {project.bullets?.length > 0 && (
                         <ul className="mt-2 space-y-1">
                           {project.bullets.map((bullet, idx) => (
-                            <li key={idx} className="text-xs text-muted-foreground">
+                            <li
+                              key={idx}
+                              className="text-xs text-muted-foreground"
+                            >
                               • {bullet}
                             </li>
                           ))}
