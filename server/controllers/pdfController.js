@@ -10,13 +10,13 @@ export const exportStandardResume = async (req, res) => {
 
     const doc = new PDFDocument({
       size: "A4",
-      margin: 72
+      margin: 72,
     });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      "attachment; filename=ATSFriendly_Resume.pdf"
+      "attachment; filename=ATSFriendly_Resume.pdf",
     );
 
     doc.pipe(res);
@@ -35,7 +35,7 @@ export const exportStandardResume = async (req, res) => {
       header.phone,
       header.location,
       header.linkedin,
-      header.github
+      header.github,
     ]
       .filter(Boolean)
       .join(" | ");
@@ -53,10 +53,7 @@ export const exportStandardResume = async (req, res) => {
     /* ================= HELPERS ================= */
 
     const sectionTitle = (title) => {
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(12)
-        .text(title.toUpperCase());
+      doc.font("Helvetica-Bold").fontSize(12).text(title.toUpperCase());
       doc
         .moveTo(doc.page.margins.left, doc.y)
         .lineTo(doc.page.width - doc.page.margins.right, doc.y)
@@ -67,10 +64,7 @@ export const exportStandardResume = async (req, res) => {
     const renderBullets = (items) => {
       items.forEach((b) => {
         if (b && b.trim()) {
-          doc
-            .font("Helvetica")
-            .fontSize(10)
-            .text(`• ${b}`, { indent: 14 });
+          doc.font("Helvetica").fontSize(10).text(`• ${b}`, { indent: 14 });
         }
       });
     };
@@ -79,13 +73,10 @@ export const exportStandardResume = async (req, res) => {
 
     if (optimizedResume.summary) {
       sectionTitle("Professional Summary");
-      doc
-        .font("Helvetica")
-        .fontSize(10)
-        .text(optimizedResume.summary, {
-          align: "justify",
-          lineGap: 2
-        });
+      doc.font("Helvetica").fontSize(10).text(optimizedResume.summary, {
+        align: "justify",
+        lineGap: 2,
+      });
       doc.moveDown(1);
     }
 
@@ -116,9 +107,7 @@ export const exportStandardResume = async (req, res) => {
             .font("Helvetica-Bold")
             .fontSize(10)
             .text("Technical Skills: ", { continued: true });
-          doc
-            .font("Helvetica")
-            .text(techSkills);
+          doc.font("Helvetica").text(techSkills);
           doc.moveDown(0.4);
         }
       }
@@ -128,9 +117,7 @@ export const exportStandardResume = async (req, res) => {
           .font("Helvetica-Bold")
           .fontSize(10)
           .text("Soft Skills: ", { continued: true });
-        doc
-          .font("Helvetica")
-          .text(optimizedResume.skills.soft.join(", "));
+        doc.font("Helvetica").text(optimizedResume.skills.soft.join(", "));
         doc.moveDown(1);
       }
     }
@@ -152,7 +139,7 @@ export const exportStandardResume = async (req, res) => {
           .text(
             [exp.company, exp.location, exp.date || exp.duration]
               .filter(Boolean)
-              .join(" | ")
+              .join(" | "),
           );
 
         doc.moveDown(0.3);
@@ -199,21 +186,21 @@ export const exportStandardResume = async (req, res) => {
           .font("Helvetica-Bold")
           .fontSize(11)
           .text(edu.institution || "");
-
         const meta = [
           edu.degree,
           edu.board,
-          edu.score || edu.gpa,
-          edu.duration || edu.dates
+          edu.percentage
+            ? `Percentage: ${edu.percentage}%`
+            : edu.gpa
+              ? `CGPA: ${edu.gpa}`
+              : null,
+          edu.year,
         ]
           .filter(Boolean)
           .join(" | ");
 
         if (meta) {
-          doc
-            .font("Helvetica")
-            .fontSize(10)
-            .text(meta);
+          doc.font("Helvetica").fontSize(10).text(meta);
         }
 
         doc.moveDown(0.6);

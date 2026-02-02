@@ -1,14 +1,20 @@
-export const generateSummary = ({
-  role,
-  skills,
-  experienceCount,
-  education
-}) => {
-  const topSkills = skills.slice(0, 3).join(", ");
+export const generateSummary = ({ role, skills, experienceCount, education }) => {
+  const edu = education?.[0] || {};
+
+  const educationText =
+    edu.degree ||
+    edu.stream ||
+    edu.field ||
+    edu.level ||
+    "the relevant domain";
 
   if (experienceCount > 0) {
-    return `Results-driven ${role} with ${experienceCount}+ years of professional experience. Proven expertise in ${topSkills}, with a strong track record of delivering scalable and efficient solutions. Adept at collaborating with cross-functional teams and driving projects from concept to deployment.`;
+    return `Experienced ${role} with hands-on expertise in ${skills.join(
+      ", "
+    )}, backed by a strong foundation in ${educationText}.`;
   }
 
-  return `Motivated ${role} with a strong academic foundation in ${education.degree}. Skilled in ${topSkills}, with hands-on experience through academic and personal projects. Eager to apply problem-solving abilities and technical knowledge to real-world challenges in a professional environment.`;
+  return `Motivated ${role} with a strong academic foundation in ${educationText}. Skilled in ${skills.join(
+    ", "
+  )}, with hands-on experience through academic and personal projects.`;
 };

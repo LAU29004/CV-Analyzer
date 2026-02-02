@@ -8,41 +8,83 @@ import { model } from "../config/gemini.js";
 const require = createRequire(import.meta.url);
 const { PDFParse } = require("pdf-parse");
 
-/* ================= AI DEBUG LOGGER ================= */
+/* ================= LOGGER ================= */
 const logAI = (message, meta = {}) => {
-  console.log(`[AI][ANALYZE] ${message}`, meta);
+  console.log(`[AI][ATS] ${message}`, meta);
 };
-/* ================================================== */
 
-/* ---------- HEADER EXTRACTOR (NON-AI, SAFE) ---------- */
-const extractHeaderFromText = (text) => {
-  const lines = text
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
+/* ================= HELPERS ================= */
+const textIncludes = (text, patterns = []) =>
+  patterns.some((p) => new RegExp(p, "i").test(text));
+
+/* ================= ATS SCORE ================= */
+const calculateATSScore = (resume, rawText = "") => {
+  const breakdown = {
+    contact: 0,
+    sections: 0,
+    keywords: 0,
+    readability: 15,
+    formatting: 10
+  };
+
+  const missing = [];
+
+  /* ---- CONTACT ---- */
+  if (
+    resume.header?.email ||
+    textIncludes(rawText, ["@gmail", "@outlook", "@yahoo"])
+  ) breakdown.contact += 5;
+
+  if (
+    resume.header?.linkedin ||
+    textIncludes(rawText, ["linkedin\\.com"])
+  ) breakdown.contact += 3;
+  else missing.push("Missing LinkedIn");
+
+  if (
+    resume.header?.github ||
+    textIncludes(rawText, ["github\\.com"])
+  ) breakdown.contact += 2;
+  else missing.push("Missing GitHub");
+
+  /* ---- SECTIONS ---- */
+  if (textIncludes(rawText, ["summary", "profile"])) breakdown.sections += 5;
+  if (textIncludes(rawText, ["skills", "technical skills"])) breakdown.sections += 5;
+  if (textIncludes(rawText, ["experience", "intern"])) breakdown.sections += 5;
+
+  /* ---- KEYWORDS (DOMAIN AGNOSTIC) ---- */
+  const keywordHits =
+    resume.skills?.technical?.length ||
+    (rawText.match(
+      /React|Python|Java|C\+\+|SolidWorks|AutoCAD|ANSYS|PLC|IoT|SQL|Linux|Finance|Marketing|Design/gi
+    ) || []).length;
+
+  if (keywordHits >= 8) breakdown.keywords = 25;
+  else if (keywordHits >= 4) breakdown.keywords = 15;
+  else missing.push("Low keyword density");
+
+  const total =
+    breakdown.contact +
+    breakdown.sections +
+    breakdown.keywords +
+    breakdown.readability +
+    breakdown.formatting;
 
   return {
-    name: lines[0] || "",
-    email: lines.find((l) => l.includes("@")) || "",
-    phone: lines.find((l) => /\+?\d[\d\s-]{8,}/.test(l)) || "",
-    linkedin: lines.find((l) =>
-      l.toLowerCase().includes("linkedin")
-    ) || "",
-    github: lines.find((l) =>
-      l.toLowerCase().includes("github")
-    ) || "",
-    location: ""
+    overall: Math.min(total, 100),
+    breakdown,
+    missing
   };
 };
-/* --------------------------------------------------- */
 
+/* ================= CONTROLLER ================= */
 export const analyzeResume = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No resume uploaded" });
     }
 
-    /* ---------- TEXT EXTRACTION ---------- */
+    /* ---------- EXTRACT TEXT ---------- */
     let resumeText = "";
 
     if (req.file.mimetype === "application/pdf") {
@@ -58,57 +100,48 @@ export const analyzeResume = async (req, res) => {
     }
 
     if (!resumeText.trim()) {
-      return res.status(400).json({
-        error: "Failed to extract resume text"
-      });
+      return res.status(400).json({ error: "Empty resume text" });
     }
 
-    /* ---------- BASE RESUME (SAFE FALLBACK) ---------- */
+    /* ---------- SAFE BASE ---------- */
     const baseOptimizedResume = {
-      header: extractHeaderFromText(resumeText),
+      header: {},
       summary: "",
-      skills: {
-        technical: [],
-        soft: []
-      },
+      skills: { technical: [], soft: [] },
       experience: [],
       projects: [],
       education: [],
       certifications_awards: []
     };
 
-    const fallbackResponse = {
+    const fallback = {
       analysis: {
         strengths: ["Resume text extracted successfully"],
         weaknesses: ["AI optimization skipped or unavailable"]
       },
-      optimizedResume: baseOptimizedResume
+      optimizedResume: baseOptimizedResume,
+      atsScore: calculateATSScore(baseOptimizedResume, resumeText)
     };
 
     /* ---------- AI TOGGLE ---------- */
     const aiAllowed = ENABLE_AI === true;
-    logAI("AI decision evaluated", { ENABLE_AI, aiAllowed });
+    logAI("AI enabled", { aiAllowed });
 
     const finalResponse = aiAllowed
       ? await safeAI(
           async () => {
-            logAI("Calling Gemini API for resume analysis");
-
             const prompt = `
-You are an ATS resume parser and optimizer.
+You are an ATS resume analyzer.
 
 RULES:
-- Improve wording and structure ONLY
-- Do NOT invent experience, education, or projects
-- Do NOT remove real content
+- DO NOT invent experience or projects
+- Preserve domain (mechanical, civil, management, software, etc.)
+- Extract skills, experience, education if present
 - STRICT JSON ONLY
 
-JSON FORMAT:
+FORMAT:
 {
-  "analysis": {
-    "strengths": ["string"],
-    "weaknesses": ["string"]
-  },
+  "analysis": { "strengths": [], "weaknesses": [] },
   "optimizedResume": {
     "header": {},
     "summary": "",
@@ -131,42 +164,34 @@ ${resumeText}
             );
 
             const raw = await result.response.text();
-            const cleaned = raw.replace(/```json|```/g, "").trim();
-            const parsed = JSON.parse(cleaned);
+            const parsed = JSON.parse(
+              raw.replace(/```json|```/g, "").trim()
+            );
 
-            if (!parsed.optimizedResume) {
-              throw new Error("optimizedResume missing");
-            }
-
-            logAI("AI resume analysis successful");
-
-            return {
-              analysis: parsed.analysis || fallbackResponse.analysis,
-              optimizedResume: {
-                ...baseOptimizedResume,
-                ...parsed.optimizedResume,
-                header: {
-                  ...baseOptimizedResume.header,
-                  ...(parsed.optimizedResume.header || {})
-                }
+            const mergedResume = {
+              ...baseOptimizedResume,
+              ...parsed.optimizedResume,
+              skills: {
+                technical:
+                  parsed.optimizedResume.skills?.technical || [],
+                soft:
+                  parsed.optimizedResume.skills?.soft || []
               }
             };
+
+            return {
+              analysis: parsed.analysis || fallback.analysis,
+              optimizedResume: mergedResume,
+              atsScore: calculateATSScore(mergedResume, resumeText)
+            };
           },
-          () => {
-            logAI("AI failed; using fallback");
-            return fallbackResponse;
-          }
+          () => fallback
         )
-      : (() => {
-          logAI("AI disabled via configuration");
-          return fallbackResponse;
-        })();
+      : fallback;
 
     return res.json(finalResponse);
   } catch (err) {
-    console.error("Resume Analysis Error:", err);
-    return res.status(500).json({
-      error: "Resume analysis failed"
-    });
+    console.error("ATS ERROR:", err);
+    return res.status(500).json({ error: "Resume analysis failed" });
   }
 };
