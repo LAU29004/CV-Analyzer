@@ -29,6 +29,11 @@ export const createResume = async (req, res) => {
       useAI = false,
     } = req.body;
 
+      console.log("=== CREATE_RESUME HIT ===");
+console.log("useAI:", useAI);
+console.log("ENABLE_AI:", ENABLE_AI);
+console.log("experience:", experience);
+
     /* ---------- VALIDATION ---------- */
     if (
       !full_name ||
@@ -103,11 +108,32 @@ export const createResume = async (req, res) => {
     };
 
     /* ---------- AI SUMMARY ONLY ---------- */
-    const optimizedResume =
-      ENABLE_AI && useAI
-        ? await safeAI(
-            async () => {
-              const prompt = `
+const optimizedResume =
+  ENABLE_AI && useAI
+    ? await safeAI(async () => {
+        // Beginner = no experience
+        const isBeginner = !experience.length;
+
+        const prompt = isBeginner
+          ? `
+Rewrite the professional summary AND improve project descriptions.
+Do NOT invent experience.
+Do NOT add fake companies.
+
+Return JSON:
+{
+  "optimizedResume": {
+    "summary": "...",
+    "projects": [
+      { "title": "...", "description": ["..."] }
+    ]
+  }
+}
+
+BASE:
+${JSON.stringify(baseResume)}
+`
+          : `
 Rewrite ONLY the professional summary.
 Do NOT add projects or experience.
 
@@ -117,18 +143,19 @@ Return JSON:
 BASE:
 ${JSON.stringify(baseResume)}
 `;
-              const r = await retry(() => model.generateContent(prompt));
-              const parsed = JSON.parse(
-                (await r.response.text()).replace(/```json|```/g, ""),
-              );
-              return {
-                ...baseResume,
-                summary: parsed.optimizedResume.summary,
-              };
-            },
-            () => baseResume,
-          )
-        : baseResume;
+
+        const r = await retry(() => model.generateContent(prompt));
+        const parsed = JSON.parse(
+          (await r.response.text()).replace(/```json|```/g, ""),
+        );
+
+        return {
+          ...baseResume,
+          ...parsed.optimizedResume,
+        };
+      }, () => baseResume)
+    : baseResume;
+
 
     /* ---------- PROJECT SUGGESTIONS (SERVICE-DRIVEN) ---------- */
     const projectSuggestions = getProjectSuggestions({
@@ -138,11 +165,47 @@ ${JSON.stringify(baseResume)}
       education,
     });
 
+    let finalProjectSuggestions = projectSuggestions;
+
+if (ENABLE_AI && useAI && !experience.length) {
+  finalProjectSuggestions = await safeAI(
+    async () => {
+      const prompt = `
+Suggest 3 realistic resume projects for a beginner ${role}.
+Use the given skills.
+Do NOT invent work experience.
+Do NOT mention companies.
+
+Return JSON ONLY:
+{
+  "projects": [
+    {
+      "title": "Project Title",
+      "bullets": ["bullet 1", "bullet 2"]
+    }
+  ]
+}
+
+Skills:
+${skills.join(", ")}
+`;
+
+      const r = await retry(() => model.generateContent(prompt));
+      const parsed = JSON.parse(
+        (await r.response.text()).replace(/```json|```/g, "")
+      );
+       console.log("=== AI PROJECT RESPONSE ===", parsed.projects);
+      return parsed.projects;
+    },
+    () => projectSuggestions // fallback to stored logic
+  );
+}
+
     /* ---------- RESPONSE ---------- */
     res.json({
       optimizedResume,
       changeLog,
-      projectSuggestions,
+       projectSuggestions: finalProjectSuggestions,
     });
   } catch (err) {
     console.error("Create Resume Error:", err);
