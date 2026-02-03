@@ -158,7 +158,7 @@ ${JSON.stringify(baseResume)}
 
 
     /* ---------- PROJECT SUGGESTIONS (SERVICE-DRIVEN) ---------- */
-    const projectSuggestions = getProjectSuggestions({
+    const projectSuggestions = await getProjectSuggestions({
       role,
       skills,
       experience,

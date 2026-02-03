@@ -1,84 +1,113 @@
-import { softwareProjects } from "../data/projects/software.js";
-import { mbaProjects } from "../data/projects/mba.js";
-import { civilProjects } from "../data/projects/civil.js";
-import { mechanicalProjects } from "../data/projects/mechanical.js";
-import { electricalProjects } from "../data/projects/electrical.js";
+import Project from "../models/Project.js";
 
 const normalize = (v = "") => v.toLowerCase().trim();
 
 /**
- * Returns project suggestions based on ROLE + SKILLS
+ * Priority order:
+ * 1. Role + Skill
+ * 2. Skill only
+ * 3. Role only
+ * 4. Fallback
  */
-export const getProjectSuggestions = ({ role = "", skills = [] }) => {
-  const roleLower = normalize(role);
-  const skillSet = skills.map(normalize);
+export const getProjectSuggestions = async ({ role = "", skills = [] }) => {
+  try {
+    const roleLower = normalize(role);
+    const skillSet = skills.map(normalize);
 
-  let projectPool = [];
+    const allProjects = await Project.find({});
 
-  /* ================= SELECT PROJECT POOL BY ROLE ================= */
-if (roleLower.includes("civil")) {
-  projectPool = civilProjects;
-}
-else if (roleLower.includes("mechanical")) {
-  projectPool = mechanicalProjects;
-}
-else if (roleLower.includes("electrical")) {
-  projectPool = electricalProjects;
-}
-else if (
-  roleLower.includes("software") ||
-  roleLower.includes("software engineer") ||
-  roleLower.includes("software developer")
-) {
-  projectPool = softwareProjects;
-}
-else if (
-  roleLower.includes("mba") ||
-  roleLower.includes("management") ||
-  roleLower.includes("business")
-) {
-  projectPool = mbaProjects;
-}
+    if (!allProjects.length) {
+      return fallbackProjects();
+    }
 
+    /* ================= ROLE + SKILL ================= */
 
-  /* ================= FILTER BY SKILLS ================= */
+    const roleSkillMatches = allProjects.filter((p) => {
+      const roleMatch =
+        roleLower &&
+        p.role &&
+        normalize(p.role).includes(roleLower);
 
-  const matchedProjects = projectPool.filter((project) =>
-    project.requires?.some((req) => skillSet.includes(normalize(req)))
-  );
+      const skillMatch =
+        Array.isArray(p.requires) &&
+        p.requires.some((r) => skillSet.includes(normalize(r)));
 
-  /* ================= RETURN MATCHED OR FALLBACK ================= */
+      return roleMatch && skillMatch;
+    });
 
-if (matchedProjects.length > 0) {
-  const remaining = projectPool.filter(
-    (p) => !matchedProjects.includes(p)
-  );
+    if (roleSkillMatches.length > 0) {
+      return pick(roleSkillMatches, 3);
+    }
 
-  return [...matchedProjects, ...remaining].slice(0, 3).map((p) => ({
-    title: p.title,
-    bullets: p.bullets || [],
-  }));
-}
+    /* ================= SKILL ONLY ================= */
 
+    const skillOnlyMatches = allProjects.filter(
+      (p) =>
+        Array.isArray(p.requires) &&
+        p.requires.some((r) => skillSet.includes(normalize(r)))
+    );
 
-  // Role matched but skills didn’t
-  if (projectPool.length > 0) {
-    return projectPool.map((p) => ({
-  title: p.title,
-  bullets: p.bullets || [],
-}));
+    if (skillOnlyMatches.length > 0) {
+      return pick(skillOnlyMatches, 3);
+    }
 
+    /* ================= ROLE ONLY ================= */
+
+    const roleOnlyMatches = allProjects.filter(
+      (p) =>
+        roleLower &&
+        p.role &&
+        normalize(p.role).includes(roleLower)
+    );
+
+    if (roleOnlyMatches.length > 0) {
+      return pick(roleOnlyMatches, 3);
+    }
+
+    /* ================= FALLBACK ================= */
+
+    return fallbackProjects();
+  } catch (err) {
+    console.error("Project suggestion error:", err);
+    return fallbackProjects();
   }
+};
 
-  // Final generic fallback
-  return [
+/* ================= HELPERS ================= */
+
+const pick = (arr, count) =>
+  arr
+    .slice()
+    .sort(() => 0.5 - Math.random())
+    .slice(0, count)
+    .map((p) => ({
+      title: p.title,
+      bullets: p.bullets || [],
+    }));
+
+const fallbackProjects = () => [
   {
     title: "Domain Specific Mini Project",
     bullets: [
-      "Identify a real-world problem in your domain",
-      "Design and implement a practical solution",
-      "Document outcomes and learning"
+      "identify a real world problem in your domain",
+      "design and implement a practical solution",
+      "document outcomes and learning",
     ],
-  }
+  },
+  {
+    title: "Skill Enhancement Project",
+    bullets: [
+      "choose a core skill to strengthen",
+      "build a small but complete project",
+      "showcase it in your portfolio",
+    ],
+  },
+  {
+    title: "Industry Oriented Capstone Project",
+    bullets: [
+      "analyze an industry problem",
+      "propose a scalable solution",
+      "implement best practices",
+    ],
+  },
 ];
-};
