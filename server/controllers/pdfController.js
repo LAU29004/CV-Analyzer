@@ -16,7 +16,7 @@ export const exportStandardResume = async (req, res) => {
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      "attachment; filename=ATSFriendly_Resume.pdf",
+      "inline; filename=ATSFriendly_Resume.pdf",
     );
 
     doc.pipe(res);
@@ -62,27 +62,26 @@ export const exportStandardResume = async (req, res) => {
     };
 
     function renderBullets(doc, bullets = []) {
-  if (!Array.isArray(bullets)) return;
+      if (!Array.isArray(bullets)) return;
 
-  bullets.forEach((b) => {
-    // Normalize bullet to string
-    let text = "";
+      bullets.forEach((b) => {
+        // Normalize bullet to string
+        let text = "";
 
-    if (typeof b === "string") {
-      text = b;
-    } else if (typeof b === "object" && b !== null) {
-      // Handle AI objects safely
-      text = b.text || b.content || JSON.stringify(b);
-    } else {
-      text = String(b);
+        if (typeof b === "string") {
+          text = b;
+        } else if (typeof b === "object" && b !== null) {
+          // Handle AI objects safely
+          text = b.text || b.content || JSON.stringify(b);
+        } else {
+          text = String(b);
+        }
+
+        if (!text.trim()) return;
+
+        doc.text(`• ${text.trim()}`);
+      });
     }
-
-    if (!text.trim()) return;
-
-    doc.text(`• ${text.trim()}`);
-  });
-}
-
 
     /* ================= SUMMARY ================= */
 
@@ -174,12 +173,12 @@ export const exportStandardResume = async (req, res) => {
           .font("Helvetica-Bold")
           .fontSize(11)
           .text(proj.title || proj.name || "");
-
         if (proj.technologies) {
-          doc
-            .font("Helvetica-Oblique")
-            .fontSize(9)
-            .text(`Technologies: ${proj.technologies}`);
+          const tech = Array.isArray(proj.technologies)
+            ? proj.technologies.join(", ")
+            : proj.technologies;
+
+          doc.fontSize(10).text(`Technologies: ${tech}`);
         }
 
         doc.moveDown(0.3);
