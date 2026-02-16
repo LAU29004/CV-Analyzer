@@ -114,6 +114,14 @@ type ValidationErrors = {
   role?: boolean;
   email?: boolean;
   technical?: boolean;
+  tenth_institution?: boolean;
+  tenth_board?: boolean;
+  tenth_percentage?: boolean;
+  tenth_year?: boolean;
+  twelfth_institution?: boolean;
+  twelfth_board?: boolean;
+  twelfth_percentage?: boolean;
+  twelfth_year?: boolean;
 };
 
 // Per-field format errors (key = dotted path)
@@ -269,6 +277,14 @@ export function Dashboard() {
       if (!form.role.trim()) errors.role = true;
       if (!form.email.trim()) errors.email = true;
       if (!form.skills.technical.trim()) errors.technical = true;
+
+      // Class 10 - ALL fields mandatory
+      if (!form.education.tenth.institution?.trim())
+        errors.tenth_institution = true;
+      if (!form.education.tenth.board?.trim()) errors.tenth_board = true;
+      if (!form.education.tenth.percentage?.trim())
+        errors.tenth_percentage = true;
+      if (!form.education.tenth.year?.trim()) errors.tenth_year = true;
     }
     setValidationErrors(errors);
     setShowErrors(true);
@@ -1655,7 +1671,7 @@ export function Dashboard() {
                   )}
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid md:grid-cols-1 gap-6">
                   {/* Radial chart */}
                   <div className="flex items-center justify-center">
                     <div className="relative w-48 h-48">
@@ -1709,7 +1725,7 @@ export function Dashboard() {
                   </div>
 
                   {/* Quick Stats */}
-                  <div className="space-y-4">
+                  {/* <div className="space-y-4">
                     <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-muted-foreground">
@@ -1776,7 +1792,7 @@ export function Dashboard() {
                         />
                       </div>
                     </div>
-                  </div>
+                  </div> */}
                 </div>
 
                 <p className="text-xs text-muted-foreground text-center mt-4">

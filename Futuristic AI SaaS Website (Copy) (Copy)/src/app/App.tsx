@@ -29,10 +29,10 @@ export default function App() {
       <main>
         <Hero />
         <Dashboard />
+        <Roadmap onGenerateClick={() => setShowRoadmapGenerator(true)} />
         <Problems />
         <Solutions />
         <Features />
-        <Roadmap onGenerateClick={() => setShowRoadmapGenerator(true)} />
         <Stats />
         <CTA />
       </main>

@@ -12,7 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@google/generative-ai": "^0.17.0",
+    "@google/generative-ai": "^0.17.2",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "docx": "^8.5.0",
@@ -24,6 +24,7 @@
     "multer": "^2.0.2",
     "nodemon": "^3.1.11",
     "pdf-parse": "^2.4.5",
+    "pdf-parse-fork": "^1.2.0",
     "pdfkit": "^0.15.0"
   }
 }
