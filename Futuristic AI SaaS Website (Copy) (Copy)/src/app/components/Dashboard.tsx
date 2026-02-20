@@ -202,6 +202,9 @@ export function Dashboard() {
   const [projectSuggestions, setProjectSuggestions] = useState<
     SuggestedProject[]
   >([]);
+  const [certificationSuggestions, setCertificationSuggestions] = useState<
+    any[]
+  >([]);
 
   // ── Drag & drop state ──
   const [isDragging, setIsDragging] = useState(false);
@@ -565,14 +568,15 @@ export function Dashboard() {
         const { optimizedResume, atsScore, analysis } = res.data;
         setGeneratedResume(optimizedResume || null);
         setAtsResult(atsScore || null);
+        setCertificationSuggestions(res.data.certificationSuggestions || []);
         setAiSuggestions(
           analysis?.weaknesses && Array.isArray(analysis.weaknesses)
             ? analysis.weaknesses
             : [],
         );
-        if (optimizedResume?.header?.name) {
-          await generateAndPreviewPDF(optimizedResume, setPdfUrl);
-        }
+        // if (optimizedResume?.header?.name) {
+        //   await generateAndPreviewPDF(optimizedResume, setPdfUrl);
+        // }
         return;
       }
 
@@ -599,6 +603,7 @@ export function Dashboard() {
 
         setGeneratedResume(optimizedResume || null);
         setProjectSuggestions(res.data.projectSuggestions || []);
+        setCertificationSuggestions(res.data.certificationsRecommended || []);
 
         if (optimizedResume?.header?.name) {
           await generateAndPreviewPDF(optimizedResume, setPdfUrl);
@@ -773,8 +778,18 @@ export function Dashboard() {
               Candidate Type:
             </span>
             <div className="inline-flex gap-2 p-1 rounded-xl bg-white/5 border border-white/10">
+              {/*AFTER - Experienced button*/}
               <button
-                onClick={() => setUserType("experienced")}
+                onClick={() => {
+                  setUserType("experienced");
+                  setCertificationSuggestions([]);
+                  setProjectSuggestions([]);
+                  setAiSuggestions([]);
+                  setAtsResult(null);
+                  setPdfUrl(null);
+                  setExpPdfUrl(null);
+                  setGeneratedResume(null);
+                }}
                 className={`px-4 py-2 rounded-lg text-sm transition-all ${
                   userType === "experienced"
                     ? "bg-gradient-to-r from-violet-500 to-cyan-500 text-white"
@@ -785,7 +800,16 @@ export function Dashboard() {
                 Experienced
               </button>
               <button
-                onClick={() => setUserType("beginner")}
+                onClick={() => {
+                  setUserType("beginner");
+                  setCertificationSuggestions([]);
+                  setProjectSuggestions([]);
+                  setAiSuggestions([]);
+                  setAtsResult(null);
+                  setPdfUrl(null);
+                  setExpPdfUrl(null);
+                  setGeneratedResume(null);
+                }}
                 className={`px-4 py-2 rounded-lg text-sm transition-all ${
                   userType === "beginner"
                     ? "bg-gradient-to-r from-violet-500 to-cyan-500 text-white"
@@ -1671,7 +1695,7 @@ export function Dashboard() {
                   )}
                 </div>
 
-                <div className="grid md:grid-cols-1 gap-6">
+                <div className="grid md:grid-cols-2 gap-6">
                   {/* Radial chart */}
                   <div className="flex items-center justify-center">
                     <div className="relative w-48 h-48">
@@ -1725,7 +1749,7 @@ export function Dashboard() {
                   </div>
 
                   {/* Quick Stats */}
-                  {/* <div className="space-y-4">
+                  <div className="space-y-4">
                     <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-muted-foreground">
@@ -1792,7 +1816,7 @@ export function Dashboard() {
                         />
                       </div>
                     </div>
-                  </div> */}
+                  </div>
                 </div>
 
                 <p className="text-xs text-muted-foreground text-center mt-4">
@@ -2050,6 +2074,80 @@ export function Dashboard() {
                 )}
               </div>
             </div>
+            {/* ═════ CERTIFICATIONS SECTION ═════ */}
+            {userType === "experienced" && (
+              <div className="p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <>
+                    <Sparkle className="w-5 h-5 text-amber-400" />
+                    Recommended Certifications
+                  </>
+                </h3>
+                <div className="space-y-3">
+                  {certificationSuggestions.length > 0 ? (
+                    certificationSuggestions.map((cert: any, i) => (
+                      <div
+                        key={i}
+                        className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-colors"
+                      >
+                        <div className="flex items-start gap-3">
+                          <CheckCircle2 className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{cert.name}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {cert.provider}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {cert.why}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Analyze your resume to see recommended certifications!
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+            {/* After the existing Suggested Projects card, add: */}
+            {userType === "beginner" && (
+              <div className="p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <Sparkle className="w-5 h-5 text-amber-400" />
+                  Recommended Certifications
+                </h3>
+                <div className="space-y-3">
+                  {certificationSuggestions.length > 0 ? (
+                    certificationSuggestions.map((cert: any, i) => (
+                      <div
+                        key={i}
+                        className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-colors"
+                      >
+                        <div className="flex items-start gap-3">
+                          <CheckCircle2 className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{cert.name}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {cert.provider}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {cert.why}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Generate your resume to see recommended certifications!
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </motion.div>
         </div>
       </div>

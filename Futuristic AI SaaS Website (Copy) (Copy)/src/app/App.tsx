@@ -10,6 +10,7 @@ import { Stats } from './components/Stats';
 import { CTA } from './components/CTA';
 import { Footer } from './components/Footer';
 import { RoadmapGenerator } from './components/RoadmapGenerator';
+import { InterviewQA } from './components/InterviewQA';
 
 export default function App() {
   const [showRoadmapGenerator, setShowRoadmapGenerator] = useState(false);
@@ -30,9 +31,10 @@ export default function App() {
         <Hero />
         <Dashboard />
         <Roadmap onGenerateClick={() => setShowRoadmapGenerator(true)} />
+        <InterviewQA />
         <Problems />
-        <Solutions />
         <Features />
+        <Solutions />
         <Stats />
         <CTA />
       </main>

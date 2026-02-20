@@ -50,6 +50,9 @@ export function Navbar() {
               <a href="#roadmap" className="text-muted-foreground hover:text-foreground transition-colors">
                 Career Roadmap
               </a>
+              <a href="#interview-qa" className="text-muted-foreground hover:text-foreground transition-colors">
+                Interview Q&A
+              </a>
               <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
                 Features
               </a>
@@ -105,6 +108,9 @@ export function Navbar() {
               </a>
               <a href="#roadmap" className="block py-2 text-muted-foreground hover:text-foreground transition-colors">
                 Career Roadmap
+              </a>
+              <a href="#interview-qa" className="block py-2 text-muted-foreground hover:text-foreground transition-colors">
+                Interview Q&A
               </a>
               <a href="#features" className="block py-2 text-muted-foreground hover:text-foreground transition-colors">
                 Features
