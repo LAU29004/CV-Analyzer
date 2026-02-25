@@ -11,6 +11,7 @@ import { CTA } from './components/CTA';
 import { Footer } from './components/Footer';
 import { RoadmapGenerator } from './components/RoadmapGenerator';
 import { InterviewQA } from './components/InterviewQA';
+import { FindJobs } from './components/JobSuggestions';
 
 export default function App() {
   const [showRoadmapGenerator, setShowRoadmapGenerator] = useState(false);
@@ -32,6 +33,7 @@ export default function App() {
         <Dashboard />
         <Roadmap onGenerateClick={() => setShowRoadmapGenerator(true)} />
         <InterviewQA />
+        <FindJobs />
         <Problems />
         <Features />
         <Solutions />

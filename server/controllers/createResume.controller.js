@@ -219,7 +219,7 @@ import { model } from "../config/gemini.js";
 import { retry } from "../utils/retry.js";
 import { safeAI } from "../utils/safeAI.js";
 import { generateSoftSkills } from "../services/softSkillGenerator.js";
-import { generateSummary } from "../services/summaryGenerator.js";
+import { generateTemplateSummaries as generateSummary} from "../services/summaryGenerator.js";
 import { recommendCertifications } from "../services/certificationRecommender.js";
 import { generateCertificateAI } from "../services/generateCertificateAI.js";
 import { getProjectSuggestions } from "../services/projectSuggestionService.js";
