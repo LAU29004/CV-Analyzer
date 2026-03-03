@@ -1,4 +1,5 @@
 import { motion } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { CircleCheck, Clock, Target, TrendingUp, Award, Rocket } from 'lucide-react';
 
 const milestones = [
@@ -49,6 +50,25 @@ interface RoadmapProps {
 }
 
 export function Roadmap({ onGenerateClick }: RoadmapProps) {
+  const navigate = useNavigate();
+
+  const handleGenerate = () => {
+    if (onGenerateClick) {
+      try {
+        onGenerateClick();
+        // debug
+        // eslint-disable-next-line no-console
+        console.log('Roadmap: onGenerateClick invoked');
+        // Also navigate to the dedicated generator route so the user sees the generator
+        navigate('/roadmap/generate');
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('Error calling onGenerateClick', e);
+      }
+    } else {
+      navigate('/roadmap/generate');
+    }
+  };
   return (
     <section id="roadmap" className="relative py-24">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.1),transparent_70%)]" />
@@ -155,7 +175,7 @@ export function Roadmap({ onGenerateClick }: RoadmapProps) {
           className="text-center mt-16"
         >
           <button 
-            onClick={onGenerateClick}
+            onClick={handleGenerate}
             className="px-8 py-4 rounded-full bg-gradient-to-r from-violet-500 via-cyan-500 to-blue-500 hover:shadow-2xl hover:shadow-violet-500/50 transition-all"
           >
             Generate My Roadmap
