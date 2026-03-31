@@ -770,6 +770,7 @@ export const analyzeResume = async (req, res) => {
           cert.level || (inferredLevel === "fresher" ? "Beginner" : "Intermediate"),
         skills: cert.skills || [],
         why: cert.why || `Recommended based on your ${inferredRole} profile`,
+        link: cert.link || "",
       }));
 
       return {
@@ -862,6 +863,7 @@ ${resumeText}
                 cert.level || (experienceLevel === "fresher" ? "Beginner" : "Intermediate"),
               skills: cert.skills || [],
               why: cert.why || `Recommended based on your ${role} profile`,
+              link: cert.link || "",
             }));
 
             return {

@@ -6,6 +6,31 @@ import {
   mapRoleToDomain,
 } from "./certificateDataService.js";
 
+/**
+ * Enrich AI-generated cert objects with `link` from the DB.
+ * Tries exact match first, then case-insensitive partial match.
+ */
+const enrichWithLinks = async (aiCerts) => {
+  return Promise.all(
+    aiCerts.map(async (cert) => {
+      try {
+        let dbDoc = await Certificate.findOne({ name: cert.name }).lean();
+        if (!dbDoc) {
+          dbDoc = await Certificate.findOne({
+            name: {
+              $regex: cert.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+              $options: "i",
+            },
+          }).lean();
+        }
+        return { ...cert, link: dbDoc?.link || "" };
+      } catch {
+        return { ...cert, link: "" };
+      }
+    })
+  );
+};
+
 /* ─── Safe JSON parser (strips markdown fences) ─── */
 const safeParseArray = (text) => {
   const cleaned = text
@@ -148,6 +173,7 @@ const getHardcodedFallback = (role, skills = [], experienceLevel) => {
       skills: info.skills || [],
       level: experienceLevel === "fresher" ? "Beginner" : "Intermediate",
       description: info.description || "Recommended certification",
+      link: "",
     };
   });
 
@@ -165,6 +191,8 @@ const getHardcodedFallback = (role, skills = [], experienceLevel) => {
 /**
  * Fetches certs from DB matched to role + experienceLevel.
  * Falls back to hardcoded list only if DB returns nothing.
+ *
+ * FIX: Always preserves `link` from the DB document.
  */
 const getDBCerts = async (role, skills = [], experienceLevel) => {
   try {
@@ -179,6 +207,8 @@ const getDBCerts = async (role, skills = [], experienceLevel) => {
         skills: cert.skills || [],
         level: cert.level,
         description: cert.description,
+        // FIX: Ensure link is always carried over from the DB document
+        link: cert.link || "",
       }));
     }
   } catch (err) {
@@ -192,7 +222,12 @@ const getDBCerts = async (role, skills = [], experienceLevel) => {
 };
 
 /* ─── Main export (wrapper) ─── */
-export async function recommendCertifications({ role, skills = [], experienceLevel = "fresher", useAI = true }) {
+export async function recommendCertifications({
+  role,
+  skills = [],
+  experienceLevel = "fresher",
+  useAI = true,
+}) {
   return recommendCertificationsWithDB({ role, skills, experienceLevel, useAI });
 }
 
@@ -209,13 +244,22 @@ export async function recommendCertificationsWithDB({
   let certResults;
   let source;
 
-  // AI disabled → fetch from DB
-  if (ENABLE_AI !== true || useAI === false) {
+  const domain = mapRoleToDomain(role);
+
+  // ── Mechanical domain → always use DB (MCAD courses), never AI ──
+  if (domain === "mechanical") {
+    console.log("[recommendCertifications] Mechanical role – fetching MCAD certs from DB");
+    certResults = await getDBCerts(role, skills, experienceLevel,);
+    source = "db";
+
+  } else if (ENABLE_AI !== true || useAI === false) {
+    // ── AI disabled → fetch from DB ──
     console.log("[recommendCertifications] AI disabled – fetching certs from DB");
     certResults = await getDBCerts(role, skills, experienceLevel);
     source = "db";
+
   } else {
-    // AI enabled → ask Gemini, fall back to DB on error
+    // ── AI enabled → ask Gemini, fall back to DB on error ──
     const prompt = `
 You are an ATS optimization assistant.
 
@@ -250,7 +294,9 @@ Output format (strict):
       const parsed = safeParseArray(raw);
 
       if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("Empty array");
-      certResults = parsed;
+
+      // Enrich AI results with links from DB
+      certResults = await enrichWithLinks(parsed);
       source = "AI";
     } catch (err) {
       console.warn("[recommendCertifications] Gemini failed, falling back to DB:", err.message);
@@ -259,24 +305,36 @@ Output format (strict):
     }
   }
 
-  // Save to DB if userId provided
+  // ── Save to DB if userId provided ──
+  // FIX: Only save if the cert doesn't already exist for this user+name combo,
+  // and always include `link` so it is not lost on re-save.
   if (userId) {
     try {
       for (const cert of certResults) {
-        await Certificate.create({
-          userId,
-          name: cert.name,
-          organization: cert.organization,
-          skills: cert.skills || [],
-          level: cert.level || "Intermediate",
-          description: cert.description || cert.why,
-          reason: cert.why || cert.description,
-          recommendedFor: { role, experienceLevel },
-          source,
-          status: "recommended",
-        });
+        await Certificate.findOneAndUpdate(
+          // Match on userId + cert name to avoid duplicates
+          { userId, name: cert.name },
+          {
+            userId,
+            name: cert.name,
+            organization: cert.organization,
+            skills: cert.skills || [],
+            level: cert.level || "Intermediate",
+            description: cert.description || cert.why || "",
+            reason: cert.why || cert.description || "",
+            recommendedFor: { role, experienceLevel },
+            // FIX: Always persist the link so it survives re-saves
+            link: cert.link || "",
+            source,
+            status: "recommended",
+          },
+          // upsert: create if not found; new: return the updated doc
+          { upsert: true, new: true }
+        );
       }
-      console.log(`[recommendCertifications] Saved ${certResults.length} certs to DB for user ${userId}`);
+      console.log(
+        `[recommendCertifications] Upserted ${certResults.length} certs to DB for user ${userId}`
+      );
     } catch (dbErr) {
       console.error("[recommendCertifications] Error saving to DB:", dbErr.message);
     }

@@ -40,10 +40,6 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    phoneVerified: {
-      type: Boolean,
-      default: false,
-    },
     resumesGenerated: {
       type: Number,
       default: 0,

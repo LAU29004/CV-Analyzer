@@ -11,6 +11,10 @@ import certificateRoutes from "./routes/certificate.routes.js";
 import roadmapRoutes from "./routes/roadmap.routes.js";
 import interviewRoutes from "./routes/interview.routes.js";
 import jobSuggestionRoutes from "./routes/jobsuggestionRoute.js";
+import dns from 'dns';
+
+dns.setServers(["1.1.1.1","8.8.8.8"])
+
 
 const app = express();
 

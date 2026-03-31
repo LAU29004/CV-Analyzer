@@ -181,6 +181,81 @@ export const CERTIFICATES_BY_DOMAIN = {
       skills: ["UX Design", "Research", "Prototyping"],
     },
   ],
+    mechanical: [
+    {
+      name: "UGNX",
+      organization: "MCAD Solutions",
+      description:
+        "UGNX training focuses on advanced CAD modeling and design widely used in mechanical and automotive industries.",
+      level: "Beginner",
+      skills: ["CAD", "3D Modeling", "Design"],
+      link: "https://mcadsolution.com/domain-courses/",
+    },
+    {
+      name: "SOLIDWORKS",
+      organization: "MCAD Solutions",
+      description:
+        "Covers 3D design, simulation, and product development widely used in mechanical engineering industries.",
+      level: "Beginner",
+      skills: ["SolidWorks", "3D Design", "Simulation"],
+      link: "https://mcadsolution.com/domain-courses/",
+    },
+    {
+      name: "CATIA V5",
+      organization: "Dassault Systems / MCAD Solutions",
+      description:
+        "CATIA V5 is a powerful CAD software used in automotive, aerospace & manufacturing industries for 3D product design.",
+      level: "Intermediate",
+      skills: ["CATIA", "CAD", "Product Design"],
+      link: "https://mcadsolution.com/domain-courses/",
+    },
+    {
+      name: "BIW Fixture Design",
+      organization: "MCAD Solutions",
+      description:
+        "Provides advanced knowledge in Body-in-White fixture design, improving job opportunities in automotive and mechanical design fields.",
+      level: "Intermediate",
+      skills: ["BIW", "Fixture Design", "Automotive"],
+      link: "https://mcadsolution.com/domain-courses/",
+    },
+    {
+      name: "Automotive Interior Plastic Trims",
+      organization: "MCAD Solutions",
+      description:
+        "Industry-oriented course focused on interior plastic components design used in automotive engineering.",
+      level: "Intermediate",
+      skills: ["Automotive Design", "Plastic Design", "CAD"],
+      link: "https://mcadsolution.com/domain-courses/",
+    },
+    {
+      name: "Robotics Simulation",
+      organization: "MCAD Solutions",
+      description:
+        "Corporate-level training in robotic simulation with practical industry exposure and real-world applications.",
+      level: "Advanced",
+      skills: ["Robotics", "Simulation", "Automation"],
+      link: "https://mcadsolution.com/domain-courses/",
+    },
+    {
+      name: "Soft Skills",
+      organization: "MCAD Solutions",
+      description:
+        "Develops interpersonal and communication skills essential for professional and personal growth.",
+      level: "Beginner",
+      skills: ["Communication", "Teamwork", "Personality Development"],
+      link: "https://mcadsolution.com/domain-courses/",
+    },
+    {
+      name: "Personality Development",
+      organization: "MCAD Solutions",
+      description:
+        "Enhances emotional intelligence, behavior, and overall personality for career success.",
+      level: "Beginner",
+      skills: ["Confidence", "Communication", "Emotional Intelligence"],
+      link: "https://mcadsolution.com/domain-courses/",
+    },
+  
+  ],
 };
 
 /**
@@ -189,31 +264,28 @@ export const CERTIFICATES_BY_DOMAIN = {
  */
 export async function seedCertificates() {
   try {
-    const count = await Certificate.countDocuments();
-
-    // Only seed if collection is empty
-    if (count > 0) {
-      console.log("[certificateDataService] Certificates already seeded");
-      return;
-    }
-
     let totalSeeded = 0;
 
     for (const [domain, certs] of Object.entries(CERTIFICATES_BY_DOMAIN)) {
       for (const cert of certs) {
-        await Certificate.create({
-          name: cert.name,
-          organization: cert.organization,
-          description: cert.description,
-          domain,
-          level: cert.level || "Beginner",
-          skills: cert.skills || [],
-        });
+        await Certificate.findOneAndUpdate(
+          { name: cert.name },  // match by name
+          {
+            name: cert.name,
+            organization: cert.organization,
+            description: cert.description,
+            domain,
+            level: cert.level || "Beginner",
+            skills: cert.skills || [],
+            link: cert.link || "",
+          },
+          { upsert: true, new: true }
+        );
         totalSeeded++;
       }
     }
 
-    console.log(`[certificateDataService] Seeded ${totalSeeded} certificates to database`);
+    console.log(`[certificateDataService] Synced ${totalSeeded} certificates to database`);
   } catch (err) {
     console.error("[certificateDataService] Error seeding certificates:", err.message);
   }

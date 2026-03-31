@@ -104,6 +104,7 @@ export const createResume = async (req, res) => {
           why:
             cert.why ||
             `Recommended based on ${(cert.skills ?? []).join(", ") || role} skills`,
+          link: cert.link || "",
         }));
       } else {
         // Rule-based fallback when useAI=false or AI disabled

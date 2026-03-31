@@ -43,6 +43,10 @@ const certificateSchema = new mongoose.Schema(
       default: [],
       // e.g., ["React", "HTML", "CSS"]
     },
+    link: {
+      type: String,
+      default: "",
+    },
   },
   {
     timestamps: true,

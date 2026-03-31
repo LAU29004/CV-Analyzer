@@ -882,6 +882,16 @@ export function Dashboard() {
                       ))}
                     </div>
                   )}
+                  {
+                    cert.link && (
+                      <div className="mt-3">
+                        <a href={cert.link} target="_blank" rel="noopener noreferrer" className="text-xs text-violet-400 hover:text-violet-300">
+                          View Certificate
+                        </a>
+                      </div>
+                    )
+                  }
+
 
                   {!cert.description && cert.why && (
                     <p className="text-xs text-muted-foreground mt-2">{cert.why}</p>

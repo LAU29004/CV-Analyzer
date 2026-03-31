@@ -1,9 +1,34 @@
 import { ENABLE_AI } from "../config/env.js";
 import { model } from "../config/gemini.js";
+import Certificate from "../models/Certificate.js";
 import {
   getRecommendedCertificatesForRole,
   mapRoleToDomain,
 } from "./certificateDataService.js";
+
+/**
+ * Enrich AI-generated cert objects with `link` from the DB.
+ * Tries exact name match first, then case-insensitive partial match.
+ */
+const enrichWithLinks = async (aiCerts) => {
+  return Promise.all(
+    aiCerts.map(async (cert) => {
+      try {
+        // Exact match
+        let dbDoc = await Certificate.findOne({ name: cert.name }).lean();
+        // Partial / case-insensitive match as fallback
+        if (!dbDoc) {
+          dbDoc = await Certificate.findOne({
+            name: { $regex: cert.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" },
+          }).lean();
+        }
+        return { ...cert, link: dbDoc?.link || "" };
+      } catch {
+        return { ...cert, link: "" };
+      }
+    })
+  );
+};
 
 /* ─── Safe JSON parser (strips markdown fences) ─── */
 const safeParseArray = (text) => {
@@ -81,6 +106,7 @@ const getDBCerts = async (role, experienceLevel, skills = []) => {
         level: cert.level,
         description: cert.description,
         why: cert.description,
+        link: cert.link || "",
       }));
     }
   } catch (err) {
@@ -96,6 +122,13 @@ const getDBCerts = async (role, experienceLevel, skills = []) => {
 
 /* ─── Main export ─── */
 export async function generateCertificateAI({ role, skills = [], experienceLevel = "fresher", useAI = true }) {
+  // Mechanical domain → always serve from DB (MCAD courses), never AI
+  const domain = mapRoleToDomain(role);
+  if (domain === "mechanical") {
+    console.log("[generateCertificateAI] Mechanical role – fetching MCAD certs from DB");
+    return getDBCerts(role, experienceLevel, skills);
+  }
+
   // AI disabled → serve from DB (role-matched)
   if (ENABLE_AI !== true || useAI === false) {
     console.log("[generateCertificateAI] AI disabled – fetching certs from DB");
@@ -137,7 +170,8 @@ Output format (strict):
 
     // Validate shape
     if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("Empty array");
-    return parsed;
+    // Enrich AI results with links from DB
+    return await enrichWithLinks(parsed);
   } catch (err) {
     console.warn("[generateCertificateAI] Gemini failed, falling back to DB:", err.message);
     return getDBCerts(role, experienceLevel, skills);

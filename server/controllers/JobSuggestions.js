@@ -1,5 +1,6 @@
 import axios from "axios";
 import JobCache from "../models/JobCache.js";
+import redisClient from "../config/redis.js";
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -187,33 +188,58 @@ function buildCacheKey(description, skills, experience) {
 export const generateJobSuggestions = async (req, res) => {
     const { description = "", skills = "", experience = "Fresher" } = req.body;
 
+    const query=[description,skills,experience]
+        .filter(Boolean)
+        .join("|")
+        .toLowerCase()
+        .trim();
+
+    const redisKey=`jobs:${query}`;
+    
+
+
     const cacheKey = buildCacheKey(description, skills, experience);
     const queryForAPIs = [description, skills, "India"].filter(Boolean).join(" ");
 
     try {
+
+        const cachedRedis = await redisClient.get(redisKey);
+if (cachedRedis) {
+    console.log("Returning from Redis");
+    return res.json(JSON.parse(cachedRedis));
+}
+
         // ── 1. Check cache ──────────────────────────────────────────
         const cached = await JobCache.findOne({ query: cacheKey });
-        if (cached) {
-            console.log(`[JobSuggestions] Cache HIT for "${cacheKey}"`);
-            return res.json(cached.jobs);
-        }
+if (cached) {
+    console.log("Mongo Cache HIT");
 
-        console.log(`[JobSuggestions] Cache MISS — fetching live for "${cacheKey}"`);
+    await redisClient.setEx(
+        redisKey,
+        21600,
+        JSON.stringify(cached.jobs)
+    );
 
-        // ── 2. Fetch all sources in parallel ────────────────────────
+    return res.json(cached.jobs);
+}
+
         const [jsearchJobs, linkedInJobs, unstopJobs] = await Promise.all([
-            fetchJSearch(queryForAPIs),
-            fetchLinkedIn(description, experience),
-            fetchUnstop(description, experience),
-        ]);
+    fetchJSearch(queryForAPIs),
+    fetchLinkedIn(description, experience),
+    fetchUnstop(description, experience),
+]);
 
-        // ── 3. Fair merge (round-robin from each source) + cap 45 ──
-        // Order matters: sources listed first get slight priority
-        const final = fairMerge([jsearchJobs, linkedInJobs, unstopJobs], 45);
+const final = fairMerge([jsearchJobs, linkedInJobs, unstopJobs], 45);
 
-        console.log(
-            `[JobSuggestions] JSearch:${jsearchJobs.length} | LinkedIn:${linkedInJobs.length} | Unstop:${unstopJobs.length} → merged:${final.length}`
-        );
+// 4️⃣ Save Mongo
+await JobCache.create({ query: cacheKey, jobs: final });
+
+// 5️⃣ Save Redis
+await redisClient.setEx(
+    redisKey,
+    21600,
+    JSON.stringify(final)
+);
 
         // ── 4. Save to cache (expires after 12 h via TTL index) ─────
         if (final.length > 0) {

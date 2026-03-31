@@ -81,28 +81,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const syncWithBackend = async (fbUser: User) => {
     try {
-      //  Force token refresh to ensure custom claims (like verified email) are up-to-date
+      // Force token refresh so custom claims are up-to-date
       const token = await fbUser.getIdToken(true);
-      
+
+      // Check for a phone number saved at signup time (before MongoDB user existed)
+      const pendingPhone = localStorage.getItem(`pending_phone_${fbUser.uid}`);
+
       const response = await fetch("http://localhost:4000/api/auth/sync", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        body: JSON.stringify(pendingPhone ? { phoneNumber: pendingPhone } : {}),
       });
 
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.user) {
-            setUserData(data.user);
-            console.log("✅ Backend sync successful:", data.user.email);
+          setUserData(data.user);
+          console.log("✅ Backend sync successful:", data.user.email);
+          // Clear the pending phone once successfully saved
+          if (pendingPhone) {
+            localStorage.removeItem(`pending_phone_${fbUser.uid}`);
+            console.log("📱 Pending phone saved and cleared from localStorage");
+          }
         }
       } else {
         const error = await response.json();
         console.warn("⚠️ Backend sync failed:", error.message);
-        // If sync fails (e.g. server error), we might want to retry or just log it.
-        // For now, valid Firebase user but potentially out-of-sync MongoDB data.
       }
     } catch (error) {
       console.warn("Backend sync network error:", error);
