@@ -1,5 +1,4 @@
 import { hasText, hasArray } from "./guards.js";
-import { renderBullets } from "./helpers.js";
 
 // ===== Visual constants =====
 const COLORS = {
@@ -10,72 +9,86 @@ const COLORS = {
 
 const LEFT = 60;
 const RIGHT = 535;
+const TOP = 60;
+const BOTTOM_PAD = 60;
+
+const toText = (v) => {
+  if (typeof v === "string" && v.trim()) return v.trim();
+  if (typeof v === "number") return String(v);
+  return null;
+};
+
+const toList = (v) => {
+  if (Array.isArray(v)) return v.map(toText).filter(Boolean);
+  const text = toText(v);
+  if (!text) return [];
+  return text
+    .split(/\n|[;\u2022]/)
+    .map(x => toText(x))
+    .filter(Boolean);
+};
 
 export const renderMinimalTemplate = (doc, r) => {
-  let y = 60;
+  let y = TOP;
+  const contentW = RIGHT - LEFT;
+
+  const pageBottom = () => doc.page.height - BOTTOM_PAD;
+
+  const ensureSpace = (neededHeight = 0) => {
+    if (y + neededHeight <= pageBottom()) return;
+    doc.addPage();
+    y = TOP;
+  };
+
+  const write = (text, font, size, color, options = {}, gapAfter = 0) => {
+    const t = toText(text);
+    if (!t) return;
+    doc.font(font).fontSize(size);
+    const h = doc.heightOfString(t, { width: contentW, lineGap: 2, ...options });
+    ensureSpace(h);
+    doc.font(font).fontSize(size).fillColor(color).text(t, LEFT, y, {
+      width: contentW,
+      lineGap: 2,
+      ...options,
+    });
+    y += h + gapAfter;
+  };
 
   /* ───────── HEADER ───────── */
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(26)
-    .fillColor(COLORS.primary)
-    .text(r.header.name, LEFT, y);
-
-  y += 32;
+  write(r.header?.name, "Helvetica-Bold", 26, COLORS.primary, {}, 6);
 
   if (hasText(r.role)) {
-    doc
-      .font("Helvetica")
-      .fontSize(12)
-      .fillColor(COLORS.muted)
-      .text(r.role, LEFT, y);
-    y += 24;
+    write(r.role, "Helvetica", 12, COLORS.muted, {}, 10);
   }
 
   doc.fillColor(COLORS.text);
 
   /* CONTACT (inline, right-aligned) */
-  const contact = [
-    r.header.email,
-    r.header.phone,
-    r.header.location,
-  ].filter(Boolean).join(" • ");
+  const contact = [r.header?.email, r.header?.phone, r.header?.location]
+    .map(toText)
+    .filter(Boolean)
+    .join(" • ");
 
   if (hasText(contact)) {
-    doc
-      .font("Helvetica")
-      .fontSize(10)
-      .fillColor(COLORS.muted)
-      .text(contact, LEFT, 70, {
-        width: RIGHT - LEFT,
-        align: "right",
-      });
+    write(contact, "Helvetica", 10, COLORS.muted, { align: "right" }, 6);
   }
-
-  y += 10;
 
   /* SUMMARY */
   if (hasText(r.summary)) {
-    doc
-      .font("Helvetica")
-      .fontSize(11)
-      .fillColor(COLORS.text)
-      .text(r.summary, LEFT, y, {
-        width: RIGHT - LEFT,
-        lineGap: 3,
-      });
-
-    y = doc.y + 24;
+    write(r.summary, "Helvetica", 11, COLORS.text, { lineGap: 3 }, 14);
   }
 
   /* SECTION TITLE HELPER */
   const section = (title) => {
+    write(title, "Helvetica-Bold", 14, COLORS.primary, {}, 4);
+    ensureSpace(8);
     doc
-      .font("Helvetica-Bold")
-      .fontSize(14)
-      .fillColor(COLORS.primary)
-      .text(title, LEFT, y);
-    y += 20;
+      .lineWidth(0.7)
+      .strokeColor(COLORS.primary)
+      .moveTo(LEFT, y)
+      .lineTo(RIGHT, y)
+      .stroke();
+    y += 10;
     doc.fillColor(COLORS.text);
   };
 
@@ -83,41 +96,63 @@ export const renderMinimalTemplate = (doc, r) => {
   if (hasArray(r.experience)) {
     section("Professional Experience");
 
-    r.experience.forEach(exp => {
-      // Company + Date
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(11)
-        .fillColor(COLORS.primary)
-        .text(
-          `${exp.company}${exp.location ? ", " + exp.location : ""}`,
-          LEFT,
-          y
-        );
+    r.experience.forEach((exp) => {
+      const company = [toText(exp.company), toText(exp.location)].filter(Boolean).join(", ");
+      const duration = toText(exp.duration) || toText(exp.dates) || toText(exp.period);
+      const role = toText(exp.role);
+      const bullets = toList(exp.bullets).length ? toList(exp.bullets) : toList(exp.description);
 
-      doc
-        .font("Helvetica")
-        .fontSize(10)
-        .fillColor(COLORS.muted)
-        .text(exp.duration || "", LEFT, y, {
-          width: RIGHT - LEFT,
-          align: "right",
-        });
+      if (!company && !duration && !role && !bullets.length) return;
 
-      y += 14;
+      const dateWidth = 120;
+      const companyWidth = duration ? contentW - dateWidth - 8 : contentW;
+      doc.font("Helvetica-Bold").fontSize(11);
+      const companyH = company ? doc.heightOfString(company, { width: companyWidth, lineGap: 2 }) : 0;
+      doc.font("Helvetica").fontSize(10);
+      const dateH = duration ? doc.heightOfString(duration, { width: dateWidth, align: "right", lineGap: 2 }) : 0;
+      const headerH = Math.max(companyH, dateH, 12);
+      ensureSpace(headerH + 2);
 
-      // Role
-      doc
-        .font("Helvetica")
-        .fontSize(11)
-        .fillColor(COLORS.text)
-        .text(exp.role, LEFT, y);
+      if (company) {
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(11)
+          .fillColor(COLORS.primary)
+          .text(company, LEFT, y, { width: companyWidth, lineGap: 2 });
+      }
 
-      y += 12;
+      if (duration) {
+        doc
+          .font("Helvetica")
+          .fontSize(10)
+          .fillColor(COLORS.muted)
+          .text(duration, LEFT + contentW - dateWidth, y, {
+            width: dateWidth,
+            align: "right",
+            lineGap: 2,
+          });
+      }
 
-      // Bullets
-      renderBullets(doc, exp.bullets || []);
-      y = doc.y + 20;
+      y += headerH + 2;
+
+      if (role) {
+        write(role, "Helvetica", 11, COLORS.text, {}, 3);
+      }
+
+      bullets.forEach((b) => {
+        const bt = `• ${b}`;
+        doc.font("Helvetica").fontSize(10);
+        const bH = doc.heightOfString(bt, { width: contentW - 14, lineGap: 2 });
+        ensureSpace(bH);
+        doc
+          .font("Helvetica")
+          .fontSize(10)
+          .fillColor(COLORS.text)
+          .text(bt, LEFT + 10, y, { width: contentW - 14, lineGap: 2 });
+        y += bH + 2;
+      });
+
+      y += 10;
     });
   }
 
@@ -125,25 +160,13 @@ export const renderMinimalTemplate = (doc, r) => {
   if (hasArray(r.education)) {
     section("Education");
 
-    r.education.forEach(e => {
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(11)
-        .text(e.degree || e.level, LEFT, y);
+    r.education.forEach((e) => {
+      const degree = toText(e.degree) || toText(e.level);
+      const meta = [toText(e.institution), toText(e.year)].filter(Boolean).join(", ");
+      if (!degree && !meta) return;
 
-      y += 14;
-
-      doc
-        .font("Helvetica")
-        .fontSize(10)
-        .fillColor(COLORS.muted)
-        .text(
-          `${e.institution}${e.year ? ", " + e.year : ""}`,
-          LEFT,
-          y
-        );
-
-      y += 20;
+      if (degree) write(degree, "Helvetica-Bold", 11, COLORS.text, {}, 2);
+      if (meta) write(meta, "Helvetica", 10, COLORS.muted, {}, 10);
     });
 
     doc.fillColor(COLORS.text);
@@ -153,29 +176,47 @@ export const renderMinimalTemplate = (doc, r) => {
   if (hasArray(r.skills?.technical)) {
     section("Areas of Expertise");
 
-    const colWidth = (RIGHT - LEFT) / 3;
+    const skills = toList(r.skills.technical);
+    const colWidth = contentW / 3;
     let col = 0;
-    let startY = y;
+    let rowY = y;
+    let rowH = 0;
 
-    r.skills.technical.forEach((skill, i) => {
+    skills.forEach((skill, i) => {
       const x = LEFT + col * colWidth;
-      const yy = startY + Math.floor(i / 3) * 14;
+      const txt = `• ${skill}`;
+
+      doc.font("Helvetica").fontSize(10);
+      const h = doc.heightOfString(txt, { width: colWidth - 8, lineGap: 2 });
+
+      if (col === 0) {
+        ensureSpace(h + 2);
+        rowH = h;
+      } else {
+        rowH = Math.max(rowH, h);
+      }
 
       doc
         .font("Helvetica")
         .fontSize(10)
-        .text(`• ${skill}`, x, yy);
+        .fillColor(COLORS.text)
+        .text(txt, x, rowY, { width: colWidth - 8, lineGap: 2 });
 
       col = (col + 1) % 3;
+      if (col === 0 || i === skills.length - 1) {
+        rowY += rowH + 4;
+      }
     });
 
-    y = startY + Math.ceil(r.skills.technical.length / 3) * 16 + 20;
+    y = rowY + 8;
   }
 
   /* ───────── FOOTER (PAGE NUMBER) ───────── */
-  const pageCount = doc.bufferedPageRange().count;
+  const pageRange = doc.bufferedPageRange();
+  const pageCount = pageRange.count;
   for (let i = 0; i < pageCount; i++) {
-    doc.switchToPage(i);
+    const pageIndex = pageRange.start + i;
+    doc.switchToPage(pageIndex);
     doc
       .font("Helvetica")
       .fontSize(9)

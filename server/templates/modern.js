@@ -29,10 +29,10 @@ const SP = {
   entryGap      : 7,
   bulletGap     : 2,
   lineGap       : 1.2,
-  sbSectionGap  : 7,
-  sbItemGap     : 2,
-  sbEntryGap    : 5,
-  sbRowH        : 11,
+  sbSectionGap  : 5,
+  sbItemGap     : 1,
+  sbEntryGap    : 3,
+  sbRowH        : 9,
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -72,10 +72,65 @@ const textH = (doc, text, width, extra) =>
 
 const s = (v) => (v && typeof v === "string" && v.trim()) ? v.trim() : null;
 
+const toText = (v) => {
+  if (typeof v === "string") return s(v);
+  if (typeof v === "number") return String(v);
+  return null;
+};
+
+const toList = (v) => {
+  if (Array.isArray(v)) return v.map(toText).filter(Boolean);
+  const asText = toText(v);
+  if (!asText) return [];
+  return asText
+    .split(/\n|[;\u2022]/)
+    .map(x => s(x))
+    .filter(Boolean);
+};
+
+const ensureMainSpace = (doc, absY, neededHeight = 0) => {
+  let y = addPageTopPad(absY);
+  const pageIdx = Math.floor(y / PAGE_H);
+  if (pageIdx >= MAX_PAGES) return y;
+  const pageBottom = (pageIdx + 1) * PAGE_H - 24;
+  if (y + neededHeight <= pageBottom) return y;
+  const nextPage = pageIdx + 1;
+  if (nextPage >= MAX_PAGES) return y;
+  ensurePage2(doc);
+  return nextPage * PAGE_H + 40;
+};
+
+const ensureSidebarSpace = (doc, absY, neededHeight = 0) => {
+  const pageIdx = Math.floor(absY / PAGE_H);
+  if (pageIdx >= MAX_PAGES) return absY;
+  const pageBottom = (pageIdx + 1) * PAGE_H - 24;
+  if (absY + neededHeight <= pageBottom) return absY;
+  const nextPage = pageIdx + 1;
+  if (nextPage >= MAX_PAGES) return absY;
+  ensurePage2(doc);
+  return nextPage * PAGE_H + 24;
+};
+
 // Get bullets from a project/exp object — handles both .bullets and .description
 const getBullets = (obj) => {
-  if (Array.isArray(obj.bullets) && obj.bullets.length) return obj.bullets;
-  if (Array.isArray(obj.description) && obj.description.length) return obj.description;
+  const bullets = toList(obj.bullets);
+  if (bullets.length) return bullets;
+  const desc = toList(obj.description);
+  if (desc.length) return desc;
+  return [];
+};
+
+const getEducationEntries = (r) => {
+  if (hasArray(r.education)) return r.education;
+  if (hasArray(r.education_details)) return r.education_details;
+  if (hasArray(r.educationHistory)) return r.educationHistory;
+  return [];
+};
+
+const getCertificationEntries = (r) => {
+  if (hasArray(r.certifications_awards)) return r.certifications_awards;
+  if (hasArray(r.certifications)) return r.certifications;
+  if (hasArray(r.awards)) return r.awards;
   return [];
 };
 
@@ -83,6 +138,7 @@ const getBullets = (obj) => {
 
 const sbLabel = (doc, label, sy) => {
   sy += SP.sbSectionGap;
+  sy = ensureSidebarSpace(doc, sy, 16);
   checkPage(doc, sy);
   const cl = label;
   at(doc, sy, (y) => {
@@ -95,11 +151,12 @@ const sbLabel = (doc, label, sy) => {
 };
 
 const sbWrite = (doc, text, sy, font, size, color, opts) => {
-  const t = s(text);
+  const t = toText(text);
   if (!t || sy > FLOOR) return sy;
-  checkPage(doc, sy);
   doc.font(font).fontSize(size);
   const h = textH(doc, t, SB_W, opts || {});
+  sy = ensureSidebarSpace(doc, sy, h + SP.sbItemGap);
+  checkPage(doc, sy);
   const ct = t;
   at(doc, sy, (y) => {
     doc.font(font).fontSize(size).fillColor(color)
@@ -109,45 +166,57 @@ const sbWrite = (doc, text, sy, font, size, color, opts) => {
 };
 
 const renderSkills2Col = (doc, items, sy) => {
+  const list = toList(items);
   const colW = Math.floor((SB_W - 8) / 2);
-  const fits = (t) => { doc.font("Helvetica").fontSize(7.5); return doc.widthOfString(t) <= colW - 1; };
+  const gap = 5;
   const rows = [];
-  let i = 0;
-  while (i < items.length) {
-    const a = s(items[i]);
-    if (!a) { i++; continue; }
-    if (!fits(a)) { rows.push({ a, b: null, wide: true }); i++; }
-    else {
-      const b = (i + 1 < items.length) ? s(items[i + 1]) : null;
-      if (b && fits(b)) { rows.push({ a, b, wide: false }); i += 2; }
-      else { rows.push({ a, b: null, wide: false }); i++; }
-    }
+
+  for (let i = 0; i < list.length; i += 2) {
+    rows.push({ a: list[i], b: list[i + 1] || null });
   }
+
   rows.forEach((row) => {
     if (sy > FLOOR) return;
+
+    doc.font("Helvetica").fontSize(7.5);
+
+    const leftW = row.b ? colW : (SB_W - 8);
+    const leftH = row.a
+      ? textH(doc, row.a, leftW, { lineGap: SP.lineGap })
+      : 0;
+    const rightH = row.b
+      ? textH(doc, row.b, colW, { lineGap: SP.lineGap })
+      : 0;
+    const rowH = Math.max(leftH, rightH, SP.sbRowH);
+
+    sy = ensureSidebarSpace(doc, sy, rowH + 1);
     checkPage(doc, sy);
-    const { a, b, wide } = row;
+
     const csy = sy;
     at(doc, csy, (y) => {
-      if (a) {
+      if (row.a) {
         doc.rect(SB_L, y + 3.5, 3, 3).fill(COLORS.accent);
         doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.white)
-          .text(a, SB_L + 6, y, { width: wide ? SB_W - 8 : colW, lineBreak: false });
+          .text(row.a, SB_L + gap, y, { width: leftW, lineGap: SP.lineGap });
       }
-      if (b) {
-        doc.rect(SB_L + colW + 6, y + 3.5, 3, 3).fill(COLORS.accent);
+
+      if (row.b) {
+        const rightX = SB_L + colW + gap;
+        doc.rect(rightX, y + 3.5, 3, 3).fill(COLORS.accent);
         doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.white)
-          .text(b, SB_L + colW + 12, y, { width: colW, lineBreak: false });
+          .text(row.b, rightX + gap, y, { width: colW, lineGap: SP.lineGap });
       }
     });
-    sy += SP.sbRowH;
+
+    sy += rowH + 1;
   });
-  return sy + 3;
+  return sy + 1;
 };
 
 // ─── Main column ─────────────────────────────────────────────────────────────
 
 const mainSection = (doc, label, my) => {
+  my = ensureMainSpace(doc, my, 20);
   my = addPageTopPad(my);
   my += SP.sectionBefore;
   checkPage(doc, my);
@@ -166,12 +235,13 @@ const mainSection = (doc, label, my) => {
 };
 
 const mainWrite = (doc, text, my, font, size, color, opts) => {
-  const t = s(text);
+  const t = toText(text);
   if (!t || my > FLOOR) return my;
-  my = addPageTopPad(my);
-  checkPage(doc, my);
   doc.font(font).fontSize(size);
   const h = textH(doc, t, MAIN_W, opts || {});
+  my = ensureMainSpace(doc, my, h + 2);
+  my = addPageTopPad(my);
+  checkPage(doc, my);
   const ct = t;
   at(doc, my, (y) => {
     doc.font(font).fontSize(size).fillColor(color)
@@ -181,14 +251,15 @@ const mainWrite = (doc, text, my, font, size, color, opts) => {
 };
 
 const mainBullet = (doc, text, my) => {
-  const t = s(text);
+  const t = toText(text);
   if (!t || my > FLOOR) return my;
-  my = addPageTopPad(my);
-  checkPage(doc, my);
   const txt = `• ${t}`;
   const w   = MAIN_W - 10;
   doc.font("Helvetica").fontSize(8);
   const h = textH(doc, txt, w);
+  my = ensureMainSpace(doc, my, h + SP.bulletGap);
+  my = addPageTopPad(my);
+  checkPage(doc, my);
   const ctxt = txt;
   at(doc, my, (y) => {
     doc.font("Helvetica").fontSize(8).fillColor(COLORS.text)
@@ -205,7 +276,7 @@ export const renderModernTemplate = (doc, r) => {
   /* ══════ SIDEBAR ══════ */
   let sy = 40;
 
-  const initials = (hdr.name || "")
+  const initials = (toText(hdr.name) || "")
     .split(" ").map(w => w[0] || "").join("").slice(0, 2).toUpperCase();
   const cx = SIDEBAR_WIDTH / 2, R = 28;
   doc.switchToPage(0);
@@ -214,40 +285,45 @@ export const renderModernTemplate = (doc, r) => {
     .text(initials, cx - 13, sy + R - 10, { width: 26, align: "center", lineBreak: false });
   sy += R * 2 + 10;
 
-  if (hasEducation(r.education)) {
+  const educationEntries = getEducationEntries(r);
+  if (hasEducation(educationEntries)) {
     sy = sbLabel(doc, "Education", sy);
-    r.education.forEach((e) => {
+    educationEntries.forEach((e) => {
       if (sy > FLOOR) return;
-      if (s(e.year))        sy = sbWrite(doc, e.year,        sy, "Helvetica",      7, COLORS.accent,    { lineBreak: false });
-      if (s(e.institution)) sy = sbWrite(doc, e.institution, sy, "Helvetica-Bold", 8, COLORS.white);
-      const meta = [s(e.degree) || s(e.level), s(e.board)].filter(Boolean).join(", ");
+      const institution = toText(e.institution) || toText(e.institute) || toText(e.school) || toText(e.college) || toText(e.university);
+      const year = toText(e.year) || toText(e.period) || toText(e.duration);
+      if (year)        sy = sbWrite(doc, year,        sy, "Helvetica",      7, COLORS.accent);
+      if (institution) sy = sbWrite(doc, institution, sy, "Helvetica-Bold", 8, COLORS.white);
+      const meta = [toText(e.degree) || toText(e.level), toText(e.board)].filter(Boolean).join(", ");
       if (meta)             sy = sbWrite(doc, meta,          sy, "Helvetica",      7, COLORS.lightMuted);
       const grade = [e.percentage && `${e.percentage}%`, e.gpa && `CGPA: ${e.gpa}`]
         .filter(Boolean).join(" | ");
-      if (grade)            sy = sbWrite(doc, grade,         sy, "Helvetica",      7, COLORS.lightMuted, { lineBreak: false });
+      if (grade)            sy = sbWrite(doc, grade,         sy, "Helvetica",      7, COLORS.lightMuted);
       sy += SP.sbEntryGap;
     });
   }
 
   if (hasArray(r.skills?.technical)) {
     sy = sbLabel(doc, "Technical Skills", sy);
-    sy = renderSkills2Col(doc, r.skills.technical, sy);
+    sy = renderSkills2Col(doc, toList(r.skills.technical), sy);
   }
 
   if (hasArray(r.skills?.soft)) {
     sy = sbLabel(doc, "Soft Skills", sy);
-    sy = renderSkills2Col(doc, r.skills.soft, sy);
+    sy = renderSkills2Col(doc, toList(r.skills.soft), sy);
   }
 
-  if (hasArray(r.certifications_awards)) {
+  const certificationEntries = getCertificationEntries(r);
+  if (hasArray(certificationEntries)) {
     sy = sbLabel(doc, "Certifications", sy);
-    r.certifications_awards.forEach((cert) => {
-      const t = s(cert);
+    toList(certificationEntries).forEach((cert) => {
+      const t = toText(cert);
       if (!t || sy > FLOOR) return;
-      checkPage(doc, sy);
-      const txt = `• ${t}`;
       doc.font("Helvetica").fontSize(7.5);
+      const txt = `• ${t}`;
       const h = textH(doc, txt, SB_W - 4);
+      sy = ensureSidebarSpace(doc, sy, h + 3);
+      checkPage(doc, sy);
       const ctxt = txt;
       at(doc, sy, (y) => {
         doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.white)
@@ -262,24 +338,26 @@ export const renderModernTemplate = (doc, r) => {
 
   // NAME
   doc.font("Helvetica-Bold").fontSize(22);
-  const nameH = textH(doc, hdr.name || "", MAIN_W, { lineBreak: false });
+  const safeName = toText(hdr.name) || "";
+  const nameH = textH(doc, safeName, MAIN_W);
   at(doc, my, (y) => {
     doc.font("Helvetica-Bold").fontSize(22).fillColor(COLORS.text)
-      .text(hdr.name || "", MAIN_X, y, { width: MAIN_W, lineBreak: false });
+      .text(safeName, MAIN_X, y, { width: MAIN_W, lineGap: SP.lineGap });
   });
   my += nameH + 3;
 
   // ROLE — try r.role first, fallback to first exp role
-  const role = s(r.role) ||
-    s((r.experience || []).find(e => s(e.role))?.role);
+  const role = toText(r.role) ||
+    toText((r.experience || []).find(e => toText(e.role))?.role);
   if (role) {
     doc.font("Helvetica-Bold").fontSize(10);
-    const rH = textH(doc, role, MAIN_W, { lineBreak: false });
+    const rH = textH(doc, role, MAIN_W);
+    my = ensureMainSpace(doc, my, rH + 6);
     const cr = role;
     at(doc, my, (y) => {
       doc.font("Helvetica-Bold").fontSize(10).fillColor(COLORS.accent)
         .text(cr.toUpperCase(), MAIN_X, y,
-          { width: MAIN_W, lineBreak: false, characterSpacing: 0.7 });
+          { width: MAIN_W, characterSpacing: 0.7, lineGap: SP.lineGap });
     });
     my += rH + 4;
   }
@@ -292,14 +370,14 @@ export const renderModernTemplate = (doc, r) => {
 
   // CONTACT
   const contactFields = [hdr.phone, hdr.location, hdr.email, hdr.linkedin, hdr.github]
-    .map(s).filter(Boolean);
+    .map(toText).filter(Boolean);
   if (contactFields.length) {
     my = mainWrite(doc, contactFields.join("  ·  "), my, "Helvetica", 7.5, COLORS.muted);
     my += 7;
   }
 
   // SUMMARY
-  if (s(r.summary)) {
+  if (toText(r.summary)) {
     my = mainSection(doc, "Professional Summary", my);
     my = mainWrite(doc, r.summary, my, "Helvetica", 8.5, COLORS.muted);
     my += 2;
@@ -307,8 +385,8 @@ export const renderModernTemplate = (doc, r) => {
 
   // EXPERIENCE
   const expEntries = (r.experience || []).filter(e =>
-    s(e.role) || s(e.company) ||
-    getBullets(e).some(b => s(b))
+    toText(e.role) || toText(e.company) ||
+    getBullets(e).some(b => toText(b))
   );
   if (expEntries.length) {
     my = mainSection(doc, "Professional Experience", my);
@@ -318,34 +396,42 @@ export const renderModernTemplate = (doc, r) => {
       my = addPageTopPad(my);
       checkPage(doc, my);
 
-      const expRole = s(exp.role);
-      const expDur  = s(exp.duration) || s(exp.dates) || s(exp.period);
+      const expRole = toText(exp.role);
+      const expDur  = toText(exp.duration) || toText(exp.dates) || toText(exp.period);
       const DUR_W   = 92;
 
       if (expRole || expDur) {
+        const roleW = expDur ? MAIN_W - DUR_W - 6 : MAIN_W;
+        doc.font("Helvetica-Bold").fontSize(9.5);
+        const roleH = expRole ? textH(doc, expRole, roleW) : 0;
+        doc.font("Helvetica").fontSize(7.5);
+        const durH = expDur ? textH(doc, expDur, DUR_W, { align: "right" }) : 0;
+        const rowH = Math.max(roleH, durH, 10);
+        my = ensureMainSpace(doc, my, rowH + 2);
         const cr = expRole, cd = expDur;
         at(doc, my, (y) => {
           if (cr) {
             doc.font("Helvetica-Bold").fontSize(9.5).fillColor(COLORS.text)
-              .text(cr, MAIN_X, y, { width: cd ? MAIN_W - DUR_W - 6 : MAIN_W, lineBreak: false });
+              .text(cr, MAIN_X, y, { width: roleW, lineGap: SP.lineGap });
           }
           if (cd) {
             doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.lightMuted)
               .text(cd, MAIN_X + (MAIN_W - DUR_W), y,
-                { width: DUR_W, align: "right", lineBreak: false });
+                { width: DUR_W, align: "right", lineGap: SP.lineGap });
           }
         });
-        my += 12;
+        my += rowH + 2;
       }
 
-      const co = [s(exp.company), s(exp.location)].filter(Boolean).join("  ·  ");
+      const co = [toText(exp.company), toText(exp.location)].filter(Boolean).join("  ·  ");
       if (co) {
         doc.font("Helvetica-Oblique").fontSize(8.5);
-        const coH = textH(doc, co, MAIN_W, { lineBreak: false });
+        const coH = textH(doc, co, MAIN_W);
+        my = ensureMainSpace(doc, my, coH + 3);
         const cco = co;
         at(doc, my, (y) => {
           doc.font("Helvetica-Oblique").fontSize(8.5).fillColor(COLORS.accent)
-            .text(cco, MAIN_X, y, { width: MAIN_W, lineBreak: false });
+            .text(cco, MAIN_X, y, { width: MAIN_W, lineGap: SP.lineGap });
         });
         my += coH + 3;
       }
@@ -359,7 +445,7 @@ export const renderModernTemplate = (doc, r) => {
 
   // PROJECTS
   const projEntries = (r.projects || []).filter(p =>
-    s(p.title) || getBullets(p).some(b => s(b))
+    toText(p.title) || getBullets(p).some(b => toText(b))
   );
   if (projEntries.length) {
     my = mainSection(doc, "Projects", my);
@@ -369,26 +455,28 @@ export const renderModernTemplate = (doc, r) => {
       my = addPageTopPad(my);
       checkPage(doc, my);
 
-      const title = s(p.title);
+      const title = toText(p.title);
       if (title) {
         doc.font("Helvetica-Bold").fontSize(9.5);
-        const tH = textH(doc, title, MAIN_W, { lineBreak: false });
+        const tH = textH(doc, title, MAIN_W);
+        my = ensureMainSpace(doc, my, tH + 2);
         const ct = title;
         at(doc, my, (y) => {
           doc.font("Helvetica-Bold").fontSize(9.5).fillColor(COLORS.text)
-            .text(ct, MAIN_X, y, { width: MAIN_W, lineBreak: false });
+            .text(ct, MAIN_X, y, { width: MAIN_W, lineGap: SP.lineGap });
         });
         my += tH + 2;
       }
 
       if (hasArray(p.technologies)) {
-        const techTxt = `Technologies: ${p.technologies.join(", ")}`;
+        const techTxt = `Technologies: ${toList(p.technologies).join(", ")}`;
         doc.font("Helvetica").fontSize(7.5);
-        const techH = textH(doc, techTxt, MAIN_W, { lineBreak: false });
+        const techH = textH(doc, techTxt, MAIN_W);
+        my = ensureMainSpace(doc, my, techH + 3);
         const ctxt = techTxt;
         at(doc, my, (y) => {
           doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.accent)
-            .text(ctxt, MAIN_X, y, { width: MAIN_W, lineBreak: false });
+            .text(ctxt, MAIN_X, y, { width: MAIN_W, lineGap: SP.lineGap });
         });
         my += techH + 3;
       }

@@ -11,4 +11,12 @@ export const hasProjects = p =>
   hasArray(p) && p.some(x => hasText(x.title));
 
 export const hasEducation = e =>
-  hasArray(e) && e.some(x => hasText(x.institution));
+  hasArray(e) && e.some(x =>
+    hasText(x.institution) ||
+    hasText(x.institute) ||
+    hasText(x.school) ||
+    hasText(x.college) ||
+    hasText(x.university) ||
+    hasText(x.degree) ||
+    hasText(x.level)
+  );
