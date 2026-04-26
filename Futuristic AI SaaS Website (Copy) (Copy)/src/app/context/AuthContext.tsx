@@ -13,6 +13,7 @@ export type UserRole = "user" | "admin";
 export interface UserData {
   _id: string; // MongoDB ID
   firebaseUid: string;
+  name: string | null;
   email: string | null;
   displayName: string | null;
   phoneNumber: string | null;
@@ -99,7 +100,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.user) {
-          setUserData(data.user);
+          const resolvedName = data.user.displayName || data.user.name || fbUser.displayName || null;
+          setUserData({
+            ...data.user,
+            name: resolvedName,
+            displayName: resolvedName,
+          });
           console.log("✅ Backend sync successful:", data.user.email);
           // Clear the pending phone once successfully saved
           if (pendingPhone) {

@@ -25,6 +25,31 @@ export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const toTitleCase = (value: string) =>
+    value
+      .split(" ")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(" ");
+
+  const resolveDisplayName = () => {
+    const profileName =
+      userData?.displayName?.trim() ||
+      userData?.name?.trim() ||
+      user?.displayName?.trim();
+    if (profileName) return profileName;
+
+    const emailLocalPart = user?.email?.split("@")[0]?.trim();
+    if (emailLocalPart) {
+      const cleaned = emailLocalPart.replace(/[._-]+/g, " ").replace(/\s+/g, " ").trim();
+      return cleaned ? toTitleCase(cleaned) : "User";
+    }
+
+    return "User";
+  };
+
+  const displayUserName = resolveDisplayName();
+
   // ─────────────────────────────────────────────
   // Helpers
   // ─────────────────────────────────────────────
@@ -59,37 +84,58 @@ export function Navbar() {
   // ─────────────────────────────────────────────
   // Nav links config
   // ─────────────────────────────────────────────
-  const navLinks: { label: string; id: string }[] = [
-    { label: "Dashboard", id: "dashboard" },
-    { label: "Career Roadmap", id: "roadmap" },
-    { label: "Interview Q&A", id: "interview-qa" },
-    { label: "Job Suggestions", id: "job-suggestions" },
-    { label: "Features", id: "features" },
-    { label: "Solutions", id: "solutions" },
+  const navLinks: { label: string; id?: string; path?: string }[] = [
+    //{ label: "Dashboard", id: "dashboard" },
+    { label: "Career Roadmap", path: "/roadmap" },
+    { label: "Interview Q&A", path: "/interview-qa" },
+    { label: "Job Suggestions", path: "/job-suggestions" },
+    // { label: "Features", id: "features" },
+    // { label: "Solutions", id: "solutions" },
   ];
+
+  const handleNavClick = ({ id, path }: { id?: string; path?: string }) => {
+    setIsMenuOpen(false);
+    if (path) {
+      navigate(path);
+      return;
+    }
+    if (id) {
+      scrollToSection(id);
+    }
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 backdrop-blur-xl bg-background/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-
           {/* ── Logo ── */}
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Sparkles className="w-8 h-8 text-violet-400" />
-              <div className="absolute inset-0 blur-lg bg-violet-400/50 -z-10" />
-            </div>
-            <span className="text-xl bg-gradient-to-r from-blue-400 via-violet-400 to-cyan-400 bg-clip-text text-transparent">
+          <button
+            onClick={() => scrollToSection("hero")}
+            className="flex items-center gap-3 p-3 rounded-2xl 
+             cursor-pointer border bg-white
+             hover:shadow-xl hover:scale-105 
+             transition-all duration-300"
+          >
+            <Sparkles className="w-8 h-8 text-violet-400" />
+
+            <span className="text-xl font-semibold text-gray-800">
               CV Analyzer
             </span>
-          </div>
+          </button>
 
           {/* ── Desktop nav ── */}
           <div className="hidden md:flex items-center gap-6">
-            {navLinks.map(({ label, id }) => (
+            <Link
+              to="/dashboard"
+              className="px-4 py-2 rounded-full border border-amber-500/50 hover:bg-amber-500/10 transition-colors flex items-center gap-2 text-sm text-amber-400"
+            >
+              <Shield className="w-4 h-4" />
+              Dashboard
+            </Link>
+            {navLinks.map(({ label, id, path }) => (
               <button
-                key={id}
-                onClick={() => scrollToSection(id)}
+                key={id ?? path ?? label}
+                onClick={() => handleNavClick({ id, path })}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 {label}
@@ -101,7 +147,11 @@ export function Navbar() {
               className="p-2 rounded-lg hover:bg-accent transition-colors"
               aria-label="Toggle theme"
             >
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {isDark ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
             </button>
 
             {user ? (
@@ -110,7 +160,7 @@ export function Navbar() {
                 <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/30">
                   <UserIcon className="w-4 h-4 text-violet-400" />
                   <span className="text-sm text-violet-400 max-w-[140px] truncate">
-                    {userData?.displayName || user.email}
+                    {displayUserName}
                   </span>
                 </div>
 
@@ -159,13 +209,21 @@ export function Navbar() {
               className="p-2 rounded-lg hover:bg-accent transition-colors"
               aria-label="Toggle theme"
             >
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {isDark ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
             </button>
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="p-2 rounded-lg hover:bg-accent transition-colors"
             >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </button>
           </div>
         </div>
@@ -175,10 +233,10 @@ export function Navbar() {
       {isMenuOpen && (
         <div className="md:hidden border-t border-white/10 backdrop-blur-xl bg-background/95">
           <div className="px-4 py-4 space-y-3">
-            {navLinks.map(({ label, id }) => (
+            {navLinks.map(({ label, id, path }) => (
               <button
-                key={id}
-                onClick={() => scrollToSection(id)}
+                key={id ?? path ?? label}
+                onClick={() => handleNavClick({ id, path })}
                 className="block w-full text-left py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 {label}
@@ -191,7 +249,7 @@ export function Navbar() {
                 <div className="py-2 px-4 rounded-lg bg-violet-500/10 border border-violet-500/30 flex items-center gap-2">
                   <UserIcon className="w-4 h-4 text-violet-400" />
                   <p className="text-sm text-violet-400 truncate">
-                    {userData?.displayName || user.email}
+                    {displayUserName}
                   </p>
                 </div>
 
@@ -219,13 +277,19 @@ export function Navbar() {
             ) : (
               <>
                 <button
-                  onClick={() => { openLogin(); setIsMenuOpen(false); }}
+                  onClick={() => {
+                    openLogin();
+                    setIsMenuOpen(false);
+                  }}
                   className="w-full px-6 py-2 rounded-full border border-violet-500/50 hover:bg-violet-500/10 transition-all text-sm"
                 >
                   Login
                 </button>
                 <button
-                  onClick={() => { openSignup(); setIsMenuOpen(false); }}
+                  onClick={() => {
+                    openSignup();
+                    setIsMenuOpen(false);
+                  }}
                   className="w-full px-6 py-2 rounded-full bg-gradient-to-r from-blue-500 via-violet-500 to-cyan-500 hover:shadow-lg hover:shadow-violet-500/50 transition-all text-sm"
                 >
                   Sign Up

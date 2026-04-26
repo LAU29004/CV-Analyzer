@@ -1,6 +1,6 @@
 import { hasArray, hasEducation } from "./guards.js";
 
-// ===== Layout constants (DO NOT REMOVE) =====
+// ===== Layout constants =====
 const SIDEBAR_WIDTH = 200;
 const PAGE_PADDING  = 32;
 
@@ -21,7 +21,7 @@ const SB_L      = 14;
 const SB_W      = SIDEBAR_WIDTH - SB_L - 10;
 const MAX_PAGES = 2;
 const FLOOR     = PAGE_H * MAX_PAGES - 24;
-const PAGE2_TOP = PAGE_H + 40; // extra top padding when content starts on page 2
+const PAGE2_TOP = PAGE_H + 40;
 
 const SP = {
   sectionBefore : 8,
@@ -35,7 +35,126 @@ const SP = {
   sbRowH        : 9,
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Universal field helpers ─────────────────────────────────────────────────
+
+const toText = (v) => {
+  if (typeof v === "string" && v.trim()) return v.trim();
+  if (typeof v === "number") return String(v);
+  return null;
+};
+
+const toList = (v) => {
+  if (Array.isArray(v)) return v.map(toText).filter(Boolean);
+  const t = toText(v);
+  if (!t) return [];
+  return t.split(/\n|[;\u2022]/).map(x => toText(x)).filter(Boolean);
+};
+
+/** Get professional summary or objective — handles both field names. */
+const getSummary = (r) =>
+  toText(r.summary) || toText(r.objective) || toText(r.profile) || null;
+
+/**
+ * Build a structured skill breakdown for sidebar display.
+ * Returns an array of { label, items[] }.
+ * Handles both Om's named sub-keys and Rushikesh's flat highlights.
+ */
+const getSkillSections = (r) => {
+  const sections = [];
+  const push = (label, src) => {
+    const items = toList(src);
+    if (items.length) sections.push({ label, items });
+  };
+
+  if (r.skills && typeof r.skills === "object" && !Array.isArray(r.skills)) {
+    push("Languages",               r.skills.languages);
+    push("Libraries & Frameworks",  r.skills.frameworks || r.skills.libraries);
+    push("Tools",                   r.skills.tools);
+    push("Concepts",                r.skills.concepts);
+    push("Technical Skills",        r.skills.technical);
+    push("Soft Skills",             r.skills.soft);
+  } else if (r.skills) {
+    push("Skills", r.skills);
+  }
+
+  // Rushikesh "highlights" field (plain skill list)
+  if (r.highlights && !sections.length) {
+    push("Areas of Expertise", r.highlights);
+  }
+
+  if (!sections.length) {
+    // Last resort: flatten everything we can find
+    const flat = [
+      ...(toList(r.technicalSkills)),
+      ...(toList(r.softSkills)),
+    ].filter(Boolean);
+    if (flat.length) sections.push({ label: "Skills", items: flat });
+  }
+
+  return sections;
+};
+
+/** Get education entries from any common key. */
+const getEducation = (r) => {
+  if (hasArray(r.education))          return r.education;
+  if (hasArray(r.education_details))  return r.education_details;
+  if (hasArray(r.educationHistory))   return r.educationHistory;
+  return [];
+};
+
+/** Get projects from any common key. */
+const getProjects = (r) => {
+  if (hasArray(r.projects)) return r.projects;
+  if (hasArray(r.project))  return r.project;
+  return [];
+};
+
+/** Get bullet points from an experience/project entry. */
+const getBullets = (obj) => {
+  const b = toList(obj.bullets);
+  if (b.length) return b;
+  const d = toList(obj.description);
+  if (d.length) return d;
+  return toList(obj.responsibilities);
+};
+
+/** Resolve degree / level string from an education entry. */
+const resolveDegree = (e) =>
+  toText(e.degree) || toText(e.qualification) || toText(e.level) || null;
+
+/** Resolve institution from any common key. */
+const resolveInstitution = (e) =>
+  toText(e.institution) || toText(e.institute) || toText(e.school) ||
+  toText(e.college) || toText(e.university) || null;
+
+/** Build grade string from percentage / GPA / CGPA fields. */
+const resolveGrade = (e) => {
+  const parts = [];
+  if (toText(e.percentage)) parts.push(`${e.percentage}%`);
+  if (toText(e.gpa))        parts.push(`CGPA: ${e.gpa}`);
+  if (toText(e.cgpa))       parts.push(`CGPA: ${e.cgpa}`);
+  return parts.join(" | ") || null;
+};
+
+/** Get certifications + awards as a flat string list. */
+const getCerts = (r) => {
+  const entries = [
+    ...(hasArray(r.certifications_awards) ? r.certifications_awards : []),
+    ...(hasArray(r.certifications)        ? r.certifications        : []),
+  ];
+  return [...new Set(entries.map(toText).filter(Boolean))];
+};
+
+/**
+ * Get awards entries as objects/strings.
+ * Om's resume has them under r.awards as an array of objects with .name and .bullets.
+ */
+const getAwards = (r) => {
+  if (hasArray(r.awards)) return r.awards;
+  return [];
+};
+
+// ─── Page / drawing helpers ──────────────────────────────────────────────────
 
 const drawSidebar = (doc, idx) => {
   doc.switchToPage(idx);
@@ -63,30 +182,11 @@ const checkPage = (doc, absY) => {
   if (absY >= PAGE_H) ensurePage2(doc);
 };
 
-// If absY just crossed into page 2, add top padding
 const addPageTopPad = (absY) =>
   (absY >= PAGE_H && absY < PAGE_H + 4) ? PAGE2_TOP : absY;
 
 const textH = (doc, text, width, extra) =>
   doc.heightOfString(text || "", Object.assign({ width, lineGap: SP.lineGap }, extra || {}));
-
-const s = (v) => (v && typeof v === "string" && v.trim()) ? v.trim() : null;
-
-const toText = (v) => {
-  if (typeof v === "string") return s(v);
-  if (typeof v === "number") return String(v);
-  return null;
-};
-
-const toList = (v) => {
-  if (Array.isArray(v)) return v.map(toText).filter(Boolean);
-  const asText = toText(v);
-  if (!asText) return [];
-  return asText
-    .split(/\n|[;\u2022]/)
-    .map(x => s(x))
-    .filter(Boolean);
-};
 
 const ensureMainSpace = (doc, absY, neededHeight = 0) => {
   let y = addPageTopPad(absY);
@@ -111,40 +211,16 @@ const ensureSidebarSpace = (doc, absY, neededHeight = 0) => {
   return nextPage * PAGE_H + 24;
 };
 
-// Get bullets from a project/exp object — handles both .bullets and .description
-const getBullets = (obj) => {
-  const bullets = toList(obj.bullets);
-  if (bullets.length) return bullets;
-  const desc = toList(obj.description);
-  if (desc.length) return desc;
-  return [];
-};
-
-const getEducationEntries = (r) => {
-  if (hasArray(r.education)) return r.education;
-  if (hasArray(r.education_details)) return r.education_details;
-  if (hasArray(r.educationHistory)) return r.educationHistory;
-  return [];
-};
-
-const getCertificationEntries = (r) => {
-  if (hasArray(r.certifications_awards)) return r.certifications_awards;
-  if (hasArray(r.certifications)) return r.certifications;
-  if (hasArray(r.awards)) return r.awards;
-  return [];
-};
-
-// ─── Sidebar ─────────────────────────────────────────────────────────────────
+// ─── Sidebar drawing helpers ─────────────────────────────────────────────────
 
 const sbLabel = (doc, label, sy) => {
   sy += SP.sbSectionGap;
   sy = ensureSidebarSpace(doc, sy, 16);
   checkPage(doc, sy);
-  const cl = label;
   at(doc, sy, (y) => {
     doc.rect(SB_L, y + 2, 3, 8).fill(COLORS.accent);
     doc.font("Helvetica-Bold").fontSize(7.5).fillColor(COLORS.accent)
-      .text(cl.toUpperCase(), SB_L + 8, y + 2,
+      .text(label.toUpperCase(), SB_L + 8, y + 2,
         { width: SB_W - 8, lineBreak: false, characterSpacing: 0.8 });
   });
   return sy + 14;
@@ -157,41 +233,33 @@ const sbWrite = (doc, text, sy, font, size, color, opts) => {
   const h = textH(doc, t, SB_W, opts || {});
   sy = ensureSidebarSpace(doc, sy, h + SP.sbItemGap);
   checkPage(doc, sy);
-  const ct = t;
   at(doc, sy, (y) => {
     doc.font(font).fontSize(size).fillColor(color)
-      .text(ct, SB_L, y, Object.assign({ width: SB_W, lineGap: SP.lineGap }, opts || {}));
+      .text(t, SB_L, y, Object.assign({ width: SB_W, lineGap: SP.lineGap }, opts || {}));
   });
   return sy + h + SP.sbItemGap;
 };
 
+/**
+ * Render skills in a 2-column grid in the sidebar.
+ * Works for both simple string arrays and comma-delimited strings.
+ */
 const renderSkills2Col = (doc, items, sy) => {
   const list = toList(items);
   const colW = Math.floor((SB_W - 8) / 2);
   const gap = 5;
   const rows = [];
-
-  for (let i = 0; i < list.length; i += 2) {
-    rows.push({ a: list[i], b: list[i + 1] || null });
-  }
+  for (let i = 0; i < list.length; i += 2) rows.push({ a: list[i], b: list[i + 1] || null });
 
   rows.forEach((row) => {
     if (sy > FLOOR) return;
-
     doc.font("Helvetica").fontSize(7.5);
-
-    const leftW = row.b ? colW : (SB_W - 8);
-    const leftH = row.a
-      ? textH(doc, row.a, leftW, { lineGap: SP.lineGap })
-      : 0;
-    const rightH = row.b
-      ? textH(doc, row.b, colW, { lineGap: SP.lineGap })
-      : 0;
-    const rowH = Math.max(leftH, rightH, SP.sbRowH);
-
+    const leftW  = row.b ? colW : (SB_W - 8);
+    const leftH  = row.a ? textH(doc, row.a, leftW, { lineGap: SP.lineGap }) : 0;
+    const rightH = row.b ? textH(doc, row.b, colW,  { lineGap: SP.lineGap }) : 0;
+    const rowH   = Math.max(leftH, rightH, SP.sbRowH);
     sy = ensureSidebarSpace(doc, sy, rowH + 1);
     checkPage(doc, sy);
-
     const csy = sy;
     at(doc, csy, (y) => {
       if (row.a) {
@@ -199,7 +267,6 @@ const renderSkills2Col = (doc, items, sy) => {
         doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.white)
           .text(row.a, SB_L + gap, y, { width: leftW, lineGap: SP.lineGap });
       }
-
       if (row.b) {
         const rightX = SB_L + colW + gap;
         doc.rect(rightX, y + 3.5, 3, 3).fill(COLORS.accent);
@@ -207,23 +274,21 @@ const renderSkills2Col = (doc, items, sy) => {
           .text(row.b, rightX + gap, y, { width: colW, lineGap: SP.lineGap });
       }
     });
-
     sy += rowH + 1;
   });
   return sy + 1;
 };
 
-// ─── Main column ─────────────────────────────────────────────────────────────
+// ─── Main column drawing helpers ─────────────────────────────────────────────
 
 const mainSection = (doc, label, my) => {
   my = ensureMainSpace(doc, my, 20);
   my = addPageTopPad(my);
   my += SP.sectionBefore;
   checkPage(doc, my);
-  const cl = label;
   at(doc, my, (y) => {
     doc.font("Helvetica-Bold").fontSize(9).fillColor(COLORS.text)
-      .text(cl.toUpperCase(), MAIN_X, y,
+      .text(label.toUpperCase(), MAIN_X, y,
         { width: MAIN_W, lineBreak: false, characterSpacing: 1.2 });
   });
   const ruleY = my + 12;
@@ -242,249 +307,308 @@ const mainWrite = (doc, text, my, font, size, color, opts) => {
   my = ensureMainSpace(doc, my, h + 2);
   my = addPageTopPad(my);
   checkPage(doc, my);
-  const ct = t;
   at(doc, my, (y) => {
     doc.font(font).fontSize(size).fillColor(color)
-      .text(ct, MAIN_X, y, Object.assign({ width: MAIN_W, lineGap: SP.lineGap }, opts || {}));
+      .text(t, MAIN_X, y, Object.assign({ width: MAIN_W, lineGap: SP.lineGap }, opts || {}));
   });
   return my + h;
 };
 
-const mainBullet = (doc, text, my) => {
+const mainBullet = (doc, text, my, indentExtra = 0) => {
   const t = toText(text);
   if (!t || my > FLOOR) return my;
   const txt = `• ${t}`;
-  const w   = MAIN_W - 10;
+  const w   = MAIN_W - 10 - indentExtra;
   doc.font("Helvetica").fontSize(8);
   const h = textH(doc, txt, w);
   my = ensureMainSpace(doc, my, h + SP.bulletGap);
   my = addPageTopPad(my);
   checkPage(doc, my);
-  const ctxt = txt;
   at(doc, my, (y) => {
     doc.font("Helvetica").fontSize(8).fillColor(COLORS.text)
-      .text(ctxt, MAIN_X + 8, y, { width: w, lineGap: SP.lineGap });
+      .text(txt, MAIN_X + 8 + indentExtra, y, { width: w, lineGap: SP.lineGap });
   });
   return my + h + SP.bulletGap;
 };
 
-// ════════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+
 export const renderModernTemplate = (doc, r) => {
   drawSidebar(doc, 0);
-  const hdr = r.header || {};
 
-  /* ══════ SIDEBAR ══════ */
+  const hdr = r.header || {};
+  // Fallback: header fields may live at top-level too
+  const getName     = () => toText(hdr.name)     || toText(r.name)     || "";
+  const getEmail    = () => toText(hdr.email)    || toText(r.email)    || null;
+  const getPhone    = () => toText(hdr.phone)    || toText(r.phone)    || null;
+  const getLocation = () => toText(hdr.location) || toText(r.location) || null;
+  const getLinkedin = () => toText(hdr.linkedin) || toText(r.linkedin) || null;
+  const getGithub   = () => toText(hdr.github)   || toText(r.github)   || null;
+
+  /* ══════════════════════════════════
+     SIDEBAR
+  ══════════════════════════════════ */
   let sy = 40;
 
-  const initials = (toText(hdr.name) || "")
-    .split(" ").map(w => w[0] || "").join("").slice(0, 2).toUpperCase();
+  // Initials avatar
+  const initials = getName().split(" ").map(w => w[0] || "").join("").slice(0, 2).toUpperCase();
   const cx = SIDEBAR_WIDTH / 2, R = 28;
   doc.switchToPage(0);
   doc.circle(cx, sy + R, R).fill(COLORS.accent);
   doc.font("Helvetica-Bold").fontSize(17).fillColor(COLORS.white)
     .text(initials, cx - 13, sy + R - 10, { width: 26, align: "center", lineBreak: false });
-  sy += R * 2 + 10;
+  sy += R * 2 + 12;
 
-  const educationEntries = getEducationEntries(r);
+  // ── Sidebar: Education ──────────────────────────────────────────────────
+  const educationEntries = getEducation(r);
   if (hasEducation(educationEntries)) {
     sy = sbLabel(doc, "Education", sy);
     educationEntries.forEach((e) => {
       if (sy > FLOOR) return;
-      const institution = toText(e.institution) || toText(e.institute) || toText(e.school) || toText(e.college) || toText(e.university);
-      const year = toText(e.year) || toText(e.period) || toText(e.duration);
+      const institution = resolveInstitution(e);
+      const year  = toText(e.year) || toText(e.period) || toText(e.duration);
+      const board = toText(e.board);
+      const deg   = resolveDegree(e);
+      const grade = resolveGrade(e);
+
       if (year)        sy = sbWrite(doc, year,        sy, "Helvetica",      7, COLORS.accent);
       if (institution) sy = sbWrite(doc, institution, sy, "Helvetica-Bold", 8, COLORS.white);
-      const meta = [toText(e.degree) || toText(e.level), toText(e.board)].filter(Boolean).join(", ");
-      if (meta)             sy = sbWrite(doc, meta,          sy, "Helvetica",      7, COLORS.lightMuted);
-      const grade = [e.percentage && `${e.percentage}%`, e.gpa && `CGPA: ${e.gpa}`]
-        .filter(Boolean).join(" | ");
-      if (grade)            sy = sbWrite(doc, grade,         sy, "Helvetica",      7, COLORS.lightMuted);
+
+      const meta = [deg, board].filter(Boolean).join(", ");
+      if (meta) sy = sbWrite(doc, meta, sy, "Helvetica", 7, COLORS.lightMuted);
+
+      // Per-year CGPAs (Om's style: e.g "1st year CGPA: 10")
+      const extraGrades = toList(e.cgpaPerYear || e.grades || e.yearwiseGrades);
+      extraGrades.forEach((g) => {
+        sy = sbWrite(doc, g, sy, "Helvetica", 7, COLORS.lightMuted);
+      });
+
+      if (grade) sy = sbWrite(doc, grade, sy, "Helvetica", 7, COLORS.lightMuted);
+
       sy += SP.sbEntryGap;
     });
   }
 
-  if (hasArray(r.skills?.technical)) {
-    sy = sbLabel(doc, "Technical Skills", sy);
-    sy = renderSkills2Col(doc, toList(r.skills.technical), sy);
-  }
+  // ── Sidebar: Skills (one sub-section per category) ─────────────────────
+  const skillSections = getSkillSections(r);
+  skillSections.forEach(({ label, items }) => {
+    if (!items.length) return;
+    sy = sbLabel(doc, label, sy);
+    sy = renderSkills2Col(doc, items, sy);
+  });
 
-  if (hasArray(r.skills?.soft)) {
-    sy = sbLabel(doc, "Soft Skills", sy);
-    sy = renderSkills2Col(doc, toList(r.skills.soft), sy);
-  }
-
-  const certificationEntries = getCertificationEntries(r);
-  if (hasArray(certificationEntries)) {
+  // ── Sidebar: Certifications ─────────────────────────────────────────────
+  const certs = getCerts(r);
+  if (certs.length) {
     sy = sbLabel(doc, "Certifications", sy);
-    toList(certificationEntries).forEach((cert) => {
-      const t = toText(cert);
-      if (!t || sy > FLOOR) return;
+    certs.forEach((cert) => {
+      if (!cert || sy > FLOOR) return;
       doc.font("Helvetica").fontSize(7.5);
-      const txt = `• ${t}`;
-      const h = textH(doc, txt, SB_W - 4);
+      const txt = `• ${cert}`;
+      const h   = textH(doc, txt, SB_W - 4);
       sy = ensureSidebarSpace(doc, sy, h + 3);
       checkPage(doc, sy);
-      const ctxt = txt;
       at(doc, sy, (y) => {
         doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.white)
-          .text(ctxt, SB_L + 2, y, { width: SB_W - 4, lineGap: SP.lineGap });
+          .text(txt, SB_L + 2, y, { width: SB_W - 4, lineGap: SP.lineGap });
       });
       sy += h + 3;
     });
   }
 
-  /* ══════ MAIN COLUMN ══════ */
+  /* ══════════════════════════════════
+     MAIN COLUMN
+  ══════════════════════════════════ */
   let my = 40;
 
-  // NAME
+  // ── Name ────────────────────────────────────────────────────────────────
+  const fullName = getName();
   doc.font("Helvetica-Bold").fontSize(22);
-  const safeName = toText(hdr.name) || "";
-  const nameH = textH(doc, safeName, MAIN_W);
+  const nameH = textH(doc, fullName, MAIN_W);
   at(doc, my, (y) => {
     doc.font("Helvetica-Bold").fontSize(22).fillColor(COLORS.text)
-      .text(safeName, MAIN_X, y, { width: MAIN_W, lineGap: SP.lineGap });
+      .text(fullName, MAIN_X, y, { width: MAIN_W, lineGap: SP.lineGap });
   });
   my += nameH + 3;
 
-  // ROLE — try r.role first, fallback to first exp role
-  const role = toText(r.role) ||
+  // ── Role / Job Title ────────────────────────────────────────────────────
+  const role = toText(r.role) || toText(hdr.role) ||
     toText((r.experience || []).find(e => toText(e.role))?.role);
   if (role) {
     doc.font("Helvetica-Bold").fontSize(10);
     const rH = textH(doc, role, MAIN_W);
     my = ensureMainSpace(doc, my, rH + 6);
-    const cr = role;
     at(doc, my, (y) => {
       doc.font("Helvetica-Bold").fontSize(10).fillColor(COLORS.accent)
-        .text(cr.toUpperCase(), MAIN_X, y,
+        .text(role.toUpperCase(), MAIN_X, y,
           { width: MAIN_W, characterSpacing: 0.7, lineGap: SP.lineGap });
     });
     my += rH + 4;
   }
 
+  // Accent rule
   at(doc, my, (y) => {
     doc.moveTo(MAIN_X, y).lineTo(PAGE_W - PAGE_PADDING, y)
       .lineWidth(1.2).strokeColor(COLORS.accent).stroke();
   });
   my += 7;
 
-  // CONTACT
-  const contactFields = [hdr.phone, hdr.location, hdr.email, hdr.linkedin, hdr.github]
-    .map(toText).filter(Boolean);
+  // ── Contact line ────────────────────────────────────────────────────────
+  const contactFields = [getPhone(), getLocation(), getEmail(), getLinkedin(), getGithub()]
+    .filter(Boolean);
   if (contactFields.length) {
     my = mainWrite(doc, contactFields.join("  ·  "), my, "Helvetica", 7.5, COLORS.muted);
     my += 7;
   }
 
-  // SUMMARY
-  if (toText(r.summary)) {
-    my = mainSection(doc, "Professional Summary", my);
-    my = mainWrite(doc, r.summary, my, "Helvetica", 8.5, COLORS.muted);
+  // ── Summary / Objective ─────────────────────────────────────────────────
+  const summary = getSummary(r);
+  if (summary) {
+    const label = toText(r.objective) ? "Objective" : "Professional Summary";
+    my = mainSection(doc, label, my);
+    my = mainWrite(doc, summary, my, "Helvetica", 8.5, COLORS.muted);
     my += 2;
   }
 
-  // EXPERIENCE
-  const expEntries = (r.experience || []).filter(e =>
-    toText(e.role) || toText(e.company) ||
-    getBullets(e).some(b => toText(b))
+  // ── Experience ──────────────────────────────────────────────────────────
+  const experience = (r.experience || []).filter(e =>
+    toText(e.role) || toText(e.company) || getBullets(e).length
   );
-  if (expEntries.length) {
+  if (experience.length) {
     my = mainSection(doc, "Professional Experience", my);
 
-    expEntries.forEach((exp, idx) => {
+    experience.forEach((exp, idx) => {
       if (my > FLOOR) return;
       my = addPageTopPad(my);
       checkPage(doc, my);
 
-      const expRole = toText(exp.role);
+      const expRole = toText(exp.role) || toText(exp.title) || toText(exp.position);
       const expDur  = toText(exp.duration) || toText(exp.dates) || toText(exp.period);
       const DUR_W   = 92;
 
+      // Role + duration row
       if (expRole || expDur) {
         const roleW = expDur ? MAIN_W - DUR_W - 6 : MAIN_W;
         doc.font("Helvetica-Bold").fontSize(9.5);
         const roleH = expRole ? textH(doc, expRole, roleW) : 0;
         doc.font("Helvetica").fontSize(7.5);
-        const durH = expDur ? textH(doc, expDur, DUR_W, { align: "right" }) : 0;
-        const rowH = Math.max(roleH, durH, 10);
+        const durH  = expDur  ? textH(doc, expDur,  DUR_W, { align: "right" }) : 0;
+        const rowH  = Math.max(roleH, durH, 10);
         my = ensureMainSpace(doc, my, rowH + 2);
-        const cr = expRole, cd = expDur;
         at(doc, my, (y) => {
-          if (cr) {
+          if (expRole) {
             doc.font("Helvetica-Bold").fontSize(9.5).fillColor(COLORS.text)
-              .text(cr, MAIN_X, y, { width: roleW, lineGap: SP.lineGap });
+              .text(expRole, MAIN_X, y, { width: roleW, lineGap: SP.lineGap });
           }
-          if (cd) {
+          if (expDur) {
             doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.lightMuted)
-              .text(cd, MAIN_X + (MAIN_W - DUR_W), y,
+              .text(expDur, MAIN_X + (MAIN_W - DUR_W), y,
                 { width: DUR_W, align: "right", lineGap: SP.lineGap });
           }
         });
         my += rowH + 2;
       }
 
-      const co = [toText(exp.company), toText(exp.location)].filter(Boolean).join("  ·  ");
-      if (co) {
+      // Company + location
+      const companyLine = [toText(exp.company), toText(exp.location)].filter(Boolean).join("  ·  ");
+      if (companyLine) {
         doc.font("Helvetica-Oblique").fontSize(8.5);
-        const coH = textH(doc, co, MAIN_W);
+        const coH = textH(doc, companyLine, MAIN_W);
         my = ensureMainSpace(doc, my, coH + 3);
-        const cco = co;
         at(doc, my, (y) => {
           doc.font("Helvetica-Oblique").fontSize(8.5).fillColor(COLORS.accent)
-            .text(cco, MAIN_X, y, { width: MAIN_W, lineGap: SP.lineGap });
+            .text(companyLine, MAIN_X, y, { width: MAIN_W, lineGap: SP.lineGap });
         });
         my += coH + 3;
       }
 
       getBullets(exp).forEach(b => { my = mainBullet(doc, b, my); });
 
-      if (idx < expEntries.length - 1) my += SP.entryGap;
+      if (idx < experience.length - 1) my += SP.entryGap;
     });
     my += 2;
   }
 
-  // PROJECTS
-  const projEntries = (r.projects || []).filter(p =>
-    toText(p.title) || getBullets(p).some(b => toText(b))
-  );
-  if (projEntries.length) {
+  // ── Projects ────────────────────────────────────────────────────────────
+  const projects = getProjects(r);
+  if (projects.length) {
     my = mainSection(doc, "Projects", my);
 
-    projEntries.forEach((p, idx) => {
+    projects.forEach((p, idx) => {
       if (my > FLOOR) return;
       my = addPageTopPad(my);
       checkPage(doc, my);
 
-      const title = toText(p.title);
+      const title = toText(p.title) || toText(p.name);
+
       if (title) {
         doc.font("Helvetica-Bold").fontSize(9.5);
         const tH = textH(doc, title, MAIN_W);
         my = ensureMainSpace(doc, my, tH + 2);
-        const ct = title;
         at(doc, my, (y) => {
           doc.font("Helvetica-Bold").fontSize(9.5).fillColor(COLORS.text)
-            .text(ct, MAIN_X, y, { width: MAIN_W, lineGap: SP.lineGap });
+            .text(title, MAIN_X, y, { width: MAIN_W, lineGap: SP.lineGap });
         });
         my += tH + 2;
       }
 
-      if (hasArray(p.technologies)) {
-        const techTxt = `Technologies: ${toList(p.technologies).join(", ")}`;
+      // Technologies / tools — handles both Array and string (e.g. "Tools: X, Y, Z")
+      const techSrc = p.technologies || p.tools || p.stack;
+      const techArr = toList(techSrc);
+      if (techArr.length) {
+        const techTxt = `Technologies: ${techArr.join(", ")}`;
         doc.font("Helvetica").fontSize(7.5);
         const techH = textH(doc, techTxt, MAIN_W);
         my = ensureMainSpace(doc, my, techH + 3);
-        const ctxt = techTxt;
         at(doc, my, (y) => {
           doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.accent)
-            .text(ctxt, MAIN_X, y, { width: MAIN_W, lineGap: SP.lineGap });
+            .text(techTxt, MAIN_X, y, { width: MAIN_W, lineGap: SP.lineGap });
         });
         my += techH + 3;
       }
 
-      // Handles both .bullets and .description from AI
       getBullets(p).forEach(b => { my = mainBullet(doc, b, my); });
 
-      if (idx < projEntries.length - 1) my += SP.entryGap;
+      if (idx < projects.length - 1) my += SP.entryGap;
     });
+    my += 2;
+  }
+
+  // ── Awards / Achievements (Om's resume) ─────────────────────────────────
+  const awards = getAwards(r);
+  if (awards.length) {
+    my = mainSection(doc, "Awards & Achievements", my);
+
+    awards.forEach((award, idx) => {
+      if (my > FLOOR) return;
+      my = addPageTopPad(my);
+      checkPage(doc, my);
+
+      // Award may be a plain string or an object { name, bullets/details }
+      const awardName = typeof award === "object"
+        ? (toText(award.name) || toText(award.title) || toText(award.award) || "")
+        : toText(award) || "";
+
+      if (!awardName) return;
+
+      const label = `${idx + 1}. ${awardName}`;
+      doc.font("Helvetica-Bold").fontSize(9.5);
+      const lH = textH(doc, label, MAIN_W);
+      my = ensureMainSpace(doc, my, lH + 2);
+      at(doc, my, (y) => {
+        doc.font("Helvetica-Bold").fontSize(9.5).fillColor(COLORS.text)
+          .text(label, MAIN_X, y, { width: MAIN_W, lineGap: SP.lineGap });
+      });
+      my += lH + 2;
+
+      // Sub-details (e.g. "Secured 1st Position")
+      const sub = typeof award === "object"
+        ? toList(award.bullets || award.details || award.description)
+        : [];
+      sub.forEach((s) => { my = mainBullet(doc, s, my, 4); });
+
+      if (idx < awards.length - 1) my += SP.entryGap;
+    });
+    my += 2;
   }
 };

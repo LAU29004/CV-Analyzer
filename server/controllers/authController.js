@@ -58,8 +58,14 @@ export const syncUser = async (req, res) => {
       }
     } else {
       const cleanEmail = fb.email?.toLowerCase().trim() || user.email;
+      const firebaseName = fb.name?.trim();
       user.emailVerified = isEmailVerified;
       user.email = cleanEmail;
+      if (firebaseName) {
+        user.name = firebaseName;
+      } else if (!user.name && cleanEmail) {
+        user.name = cleanEmail.split("@")[0];
+      }
       // Save phone if provided and not already stored
       if (bodyPhone?.trim() && !user.phoneNumber) {
         user.phoneNumber = bodyPhone.trim();
@@ -75,6 +81,7 @@ export const syncUser = async (req, res) => {
         id: user._id,
         firebaseUid: user.firebaseUid,
         name: user.name,
+        displayName: user.name,
         email: user.email,
         phoneNumber: user.phoneNumber,
         role: user.role,

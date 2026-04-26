@@ -20,6 +20,10 @@ import { Dashboard } from "./components/Dashboard";
 import { Stats } from "./components/Stats";
 import { CTA } from "./components/CTA";
 import { Footer } from "./components/Footer";
+import { BeginnerResumePage } from "./pages/Beginner";
+import { BeginnerGeneratedResumePage } from "./pages/Beginnergeneratedresumepage";
+import { ExperiencedResumePage } from "./pages/Experienced";
+import { OptimisedResumePage } from "./pages/Optimisedresumepage";
 import { RoadmapGenerator } from "./components/RoadmapGenerator";
 import { InterviewQA } from "./components/InterviewQA";
 import { FindJobs } from "./components/JobSuggestions";
@@ -31,6 +35,7 @@ import AdminRoute from "./components/AdminRoute";
 import { useAuth } from "./context/AuthContext";
 import { signOut } from "firebase/auth";
 import { auth } from "./config/firebase";
+import DashboardRoute from "./routes/Dashboard";
 
 function RoadmapGenerateRoute() {
   const navigate = useNavigate();
@@ -81,14 +86,23 @@ function Navbar() {
   };
 
   // ── Nav links config ──
-  const navLinks: { label: string; id: string }[] = [
-    { label: "Dashboard", id: "dashboard" },
-    { label: "Career Roadmap", id: "roadmap" },
-    { label: "Interview Q&A", id: "interview-qa" },
-    { label: "Job Suggestions", id: "job-suggestions" },
-    { label: "Features", id: "features" },
-    { label: "Solutions", id: "solutions" },
+  const navLinks: { label: string; id?: string; path?: string }[] = [
+    { label: "Dashboard", path: "/dashboard" },
+    { label: "Career Roadmap", path: "/roadmap" },
+    { label: "Interview Q&A", path: "/interview-qa" },
+    { label: "Job Suggestions", path: "/job-suggestions" },
   ];
+
+  const handleNavClick = ({ id, path }: { id?: string; path?: string }) => {
+    setIsMenuOpen(false);
+    if (path) {
+      navigate(path);
+      return;
+    }
+    if (id) {
+      scrollToSection(id);
+    }
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 backdrop-blur-xl bg-background/80">
@@ -96,7 +110,11 @@ function Navbar() {
         <div className="flex justify-between items-center h-16">
 
           {/* ── Logo ── */}
-          <div className="flex items-center gap-2">
+          <button
+            onClick={() => scrollToSection("hero")}
+            className="flex items-center gap-2"
+            aria-label="Go to home"
+          >
             <div className="relative">
               <Sparkles className="w-8 h-8 text-violet-400" />
               <div className="absolute inset-0 blur-lg bg-violet-400/50 -z-10" />
@@ -104,14 +122,14 @@ function Navbar() {
             <span className="text-xl bg-gradient-to-r from-blue-400 via-violet-400 to-cyan-400 bg-clip-text text-transparent">
               CV Analyzer
             </span>
-          </div>
+          </button>
 
           {/* ── Desktop nav ── */}
           <div className="hidden md:flex items-center gap-6">
-            {navLinks.map(({ label, id }) => (
+            {navLinks.map(({ label, id, path }) => (
               <button
-                key={id}
-                onClick={() => scrollToSection(id)}
+                key={id ?? path ?? label}
+                onClick={() => handleNavClick({ id, path })}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 {label}
@@ -197,10 +215,10 @@ function Navbar() {
       {isMenuOpen && (
         <div className="md:hidden border-t border-white/10 backdrop-blur-xl bg-background/95">
           <div className="px-4 py-4 space-y-3">
-            {navLinks.map(({ label, id }) => (
+            {navLinks.map(({ label, id, path }) => (
               <button
-                key={id}
-                onClick={() => scrollToSection(id)}
+                key={id ?? path ?? label}
+                onClick={() => handleNavClick({ id, path })}
                 className="block w-full text-left py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 {label}
@@ -285,18 +303,59 @@ export default function App() {
                 element={
                   <>
                     <Hero />
-                    <Dashboard />
+                    
                     <Problems />
                     <Solutions />
                     <Features />
-                      <InterviewQA />
-                      <FindJobs />
-                    <Roadmap />
+                      
                     <Stats />
                     <CTA />
                   </>
                 }
               />
+              <Route
+                path="/dashboard"
+                element={
+                  <DashboardRoute>
+                    <Dashboard />
+                  </DashboardRoute>
+                  
+                }
+              
+              />
+
+              <Route
+                path="/interview-qa"
+                element={
+                  <DashboardRoute>
+                    <InterviewQA />
+                  </DashboardRoute>
+                }
+              />
+
+              <Route
+                path="/job-suggestions"
+                element={
+                  <DashboardRoute>
+                    <FindJobs />
+                  </DashboardRoute>
+                }
+              />
+
+              <Route
+                path="/roadmap"
+                element={
+                  <DashboardRoute>
+                    <Roadmap />
+                  </DashboardRoute>
+                }
+              />
+
+              <Route path="/resume/beginner" element={<BeginnerResumePage />} />
+              <Route path="/beginner-generated-resume" element={<BeginnerGeneratedResumePage />} />
+              <Route path="/resume/experienced" element={<ExperiencedResumePage />} />
+              <Route path="/optimised-resume" element={<OptimisedResumePage />} />
+              
 
               {/* 🔹 Admin Page (Protected) */}
               <Route
