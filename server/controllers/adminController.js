@@ -1,5 +1,7 @@
-import User from "../models/User.js";
+  import User from "../models/User.js";
 import admin from "../config/firebase-admin.js";
+import AppSettings from "../models/AppSettings.js";
+import { invalidateModelCache } from "../services/aiClient.js";
 
 // Get all users with pagination and filters
 export const getAllUsers = async (req, res) => {
@@ -220,6 +222,62 @@ export const updateUserRole = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to update user role",
+    });
+  }
+};
+
+// Get the currently active AI model
+export const getActiveModel = async (req, res) => {
+  try {
+    const settings = await AppSettings.findOneAndUpdate(
+      { key: "global" },
+      { $setOnInsert: { key: "global", activeModel: "Gemini" } },
+      { new: true, upsert: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      activeModel: settings.activeModel,
+    });
+  } catch (error) {
+    console.error("Get active model error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch active model",
+    });
+  }
+};
+
+// Update the active AI model (admin-only, enforced by router middleware)
+export const updateActiveModel = async (req, res) => {
+  try {
+    const { model } = req.body;
+
+    if (!["Gemini", "ChatGPT", "Groq"].includes(model)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid model. Must be 'Gemini', 'ChatGPT', or 'Groq'",
+      });
+    }
+
+    await AppSettings.findOneAndUpdate(
+      { key: "global" },
+      { activeModel: model, updatedBy: req.user.firebaseUid },
+      { upsert: true }
+    );
+
+    invalidateModelCache();
+
+    res.status(200).json({
+      success: true,
+      message: `Active model updated to ${model}`,
+      activeModel: model,
+    });
+  } catch (error) {
+    console.error("Update active model error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update active model",
     });
   }
 };

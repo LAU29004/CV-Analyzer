@@ -7,6 +7,8 @@ import {
   toggleUserStatus,
   deleteUser,
   getRecentActivity,
+  getActiveModel,
+  updateActiveModel,
 } from "../controllers/adminController.js";
 import { authenticate, isAdmin } from "../middleware/auth.js";
 
@@ -25,5 +27,6 @@ router.delete("/users/:userId", deleteUser);
 // Statistics
 router.get("/stats", getUserStats);
 router.get("/recent-activity", getRecentActivity);
-
+router.get("/settings/model", getActiveModel);
+router.put("/settings/model", updateActiveModel);
 export default router;

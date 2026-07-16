@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
-import { getAllUsers } from "../services/adminService";
+import {
+  getAllUsers,
+  getActiveModel,
+  updateActiveModel,
+} from "../services/adminService";
+
 import { auth } from "../config/firebase";
 import { Users, Mail, Shield, Loader, Phone } from "lucide-react";
+import ModelSwitcher from "../components/ModelSwitcher";
 
 interface User {
   _id: string;
@@ -15,7 +21,9 @@ const AdminPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
+  const [activeModel, setActiveModel] = useState<"Gemini" | "ChatGPT" | "Groq">(
+    "Gemini",
+  );
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -25,9 +33,14 @@ const AdminPage: React.FC = () => {
         }
 
         const token = await auth.currentUser.getIdToken();
-        const data: User[] = await getAllUsers(token);
 
-        setUsers(data);
+        const [usersData, currentModel] = await Promise.all([
+          getAllUsers(token),
+          getActiveModel(token),
+        ]);
+
+        setUsers(usersData);
+        setActiveModel(currentModel as "Gemini" | "ChatGPT" | "Groq");
       } catch (err) {
         console.error(err);
         setError("Failed to fetch users");
@@ -38,6 +51,28 @@ const AdminPage: React.FC = () => {
 
     fetchUsers();
   }, []);
+
+  const handleModelChange = async (model: "Gemini" | "ChatGPT" | "Groq") => {
+    const previous = activeModel;
+
+    // Optimistic update
+    setActiveModel(model);
+
+    try {
+      const token = await auth.currentUser?.getIdToken();
+
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
+      await updateActiveModel(token, model);
+    } catch (err) {
+      console.error("Failed to update model:", err);
+
+      // Rollback
+      setActiveModel(previous);
+    }
+  };
 
   if (loading) {
     return (
@@ -70,14 +105,24 @@ const AdminPage: React.FC = () => {
     <div className="min-h-screen bg-background pt-32 pb-16 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
+        {/* Header */}
         <div className="mb-12">
-          <div className="flex items-center gap-3 mb-2">
-            <Shield className="w-8 h-8 text-amber-400" />
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-400 via-violet-400 to-cyan-400 bg-clip-text text-transparent">
-              Admin Panel
-            </h1>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <Shield className="w-8 h-8 text-amber-400" />
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-400 via-violet-400 to-cyan-400 bg-clip-text text-transparent">
+                Admin Panel
+              </h1>
+            </div>
+
+            <ModelSwitcher
+              defaultModel={activeModel}
+              onChange={handleModelChange}
+            />
           </div>
-          <p className="text-muted-foreground">Manage all users in the system</p>
+          <p className="text-muted-foreground">
+            Manage all users in the system
+          </p>
         </div>
 
         {/* Users Count Card */}
@@ -86,7 +131,9 @@ const AdminPage: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Users</p>
-                <p className="text-3xl font-bold text-violet-400 mt-1">{users.length}</p>
+                <p className="text-3xl font-bold text-violet-400 mt-1">
+                  {users.length}
+                </p>
               </div>
               <Users className="w-10 h-10 text-violet-400/50" />
             </div>
@@ -97,7 +144,7 @@ const AdminPage: React.FC = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Admins</p>
                 <p className="text-3xl font-bold text-amber-400 mt-1">
-                  {users.filter(u => u.role === "admin").length}
+                  {users.filter((u) => u.role === "admin").length}
                 </p>
               </div>
               <Shield className="w-10 h-10 text-amber-400/50" />
@@ -109,7 +156,7 @@ const AdminPage: React.FC = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Regular Users</p>
                 <p className="text-3xl font-bold text-cyan-400 mt-1">
-                  {users.filter(u => u.role === "user").length}
+                  {users.filter((u) => u.role === "user").length}
                 </p>
               </div>
               <Users className="w-10 h-10 text-cyan-400/50" />
@@ -125,7 +172,9 @@ const AdminPage: React.FC = () => {
                 <thead>
                   <tr className="border-b border-white/10 bg-white/5">
                     <th className="px-6 py-4 text-left">
-                      <span className="text-sm font-semibold text-muted-foreground">Name</span>
+                      <span className="text-sm font-semibold text-muted-foreground">
+                        Name
+                      </span>
                     </th>
                     <th className="px-6 py-4 text-left">
                       <span className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
@@ -176,10 +225,15 @@ const AdminPage: React.FC = () => {
                               : "bg-cyan-500/20 border border-cyan-500/50 text-cyan-400"
                           }`}
                         >
-                          <span className={`w-2 h-2 rounded-full ${
-                            user.role === "admin" ? "bg-amber-400" : "bg-cyan-400"
-                          }`}></span>
-                          {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              user.role === "admin"
+                                ? "bg-amber-400"
+                                : "bg-cyan-400"
+                            }`}
+                          ></span>
+                          {user.role.charAt(0).toUpperCase() +
+                            user.role.slice(1)}
                         </span>
                       </td>
                     </tr>

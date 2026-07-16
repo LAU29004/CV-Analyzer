@@ -139,4 +139,19 @@ export const renderStandardTemplate = (doc, r) => {
     );
     renderBullets(doc, certLines);
   }
+
+  /* FOOTER DECLARATION — bottom of the last page only */
+  const range = doc.bufferedPageRange(); // { start, count }
+  const lastPageIndex = range.start + range.count - 1;
+  doc.switchToPage(lastPageIndex);
+
+  const footerY = doc.page.height - doc.page.margins.bottom - 20;
+  doc.font("Helvetica-Oblique").fontSize(8).fillColor("#666")
+    .text(
+      "This resume has been professionally prepared by M CAD Solutions based on the information provided by the candidate.",
+      doc.page.margins.left,
+      footerY,
+      { width: doc.page.width - doc.page.margins.left - doc.page.margins.right, align: "center" }
+    );
+  doc.fillColor("#000");
 };
