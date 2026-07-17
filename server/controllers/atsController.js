@@ -471,8 +471,8 @@ const extractSkillsFromText = (text = "") =>
  * Sourced from Document 2 (superior scoring system).
  */
 const BREAKDOWN_MAXES = {
-  contact: 15,
-  sections: 20,
+  contact: 10,
+  sections: 8,
   keywords: 30,
   experience: 20,
   readability: 10,
