@@ -15,7 +15,7 @@ export const getActiveModel = async (token: string): Promise<string> => {
 
 export const updateActiveModel = async (
   token: string,
-  model: "Gemini" | "ChatGPT" | "Groq"
+  model: "Gemini" | "ChatGPT"
 ): Promise<string> => {
   const response = await fetch("http://localhost:4000/api/admin/settings/model", {
     method: "PUT",

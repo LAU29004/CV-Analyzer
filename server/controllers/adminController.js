@@ -253,10 +253,10 @@ export const updateActiveModel = async (req, res) => {
   try {
     const { model } = req.body;
 
-    if (!["Gemini", "ChatGPT", "Groq"].includes(model)) {
+    if (!["Gemini", "ChatGPT"].includes(model)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid model. Must be 'Gemini', 'ChatGPT', or 'Groq'",
+        message: "Invalid model. Must be 'Gemini', 'ChatGPT'",
       });
     }
 

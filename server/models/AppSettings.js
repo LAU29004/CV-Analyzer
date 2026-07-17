@@ -10,7 +10,7 @@ const appSettingsSchema = new mongoose.Schema(
     },
     activeModel: {
       type: String,
-      enum: ["Gemini", "ChatGPT", "Groq"],
+      enum: ["Gemini", "ChatGPT"],
       default: "Gemini",
     },
     updatedBy: {

@@ -1,7 +1,7 @@
 import { model as geminiModel } from "../config/gemini.js";
 import AppSettings from "../models/AppSettings.js";
 import OpenAI from "openai";
-import Groq from "groq-sdk";
+
 
 let cachedModelName = null;
 let cacheExpiry = 0;
@@ -22,10 +22,6 @@ export function invalidateModelCache() {
 
 const openaiClient = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null;
-
-const groqClient = process.env.GROQ_API_KEY
-  ? new Groq({ apiKey: process.env.GROQ_API_KEY })
   : null;
 
 // Wraps an OpenAI-compatible chat client so it exposes the same
@@ -59,11 +55,6 @@ export async function getActiveModelClient() {
   if (name === "ChatGPT") {
     if (!openaiClient) throw new Error("OPENAI_API_KEY is not set");
     return wrapChatCompletionClient(openaiClient, "gpt-4o-mini");
-  }
-
-  if (name === "Groq") {
-    if (!groqClient) throw new Error("GROQ_API_KEY is not set");
-    return wrapChatCompletionClient(groqClient, "llama-3.3-70b-versatile");
   }
 
   return geminiModel; // Gemini — native shape, no wrapping needed

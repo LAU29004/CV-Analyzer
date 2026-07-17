@@ -21,7 +21,7 @@ const AdminPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeModel, setActiveModel] = useState<"Gemini" | "ChatGPT" | "Groq">(
+  const [activeModel, setActiveModel] = useState<"Gemini" | "ChatGPT">(
     "Gemini",
   );
   useEffect(() => {
@@ -40,7 +40,7 @@ const AdminPage: React.FC = () => {
         ]);
 
         setUsers(usersData);
-        setActiveModel(currentModel as "Gemini" | "ChatGPT" | "Groq");
+        setActiveModel(currentModel as "Gemini" | "ChatGPT");
       } catch (err) {
         console.error(err);
         setError("Failed to fetch users");
@@ -52,7 +52,7 @@ const AdminPage: React.FC = () => {
     fetchUsers();
   }, []);
 
-  const handleModelChange = async (model: "Gemini" | "ChatGPT" | "Groq") => {
+  const handleModelChange = async (model: "Gemini" | "ChatGPT") => {
     const previous = activeModel;
 
     // Optimistic update

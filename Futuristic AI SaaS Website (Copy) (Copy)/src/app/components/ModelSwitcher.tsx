@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 
-type Model = "Gemini" | "ChatGPT" | "Groq";
+type Model = "Gemini" | "ChatGPT";
 
 export interface ModelSwitcherProps {
   defaultModel?: Model;
   onChange?: (model: Model) => void;
 }
 
-const models: Model[] = ["Gemini", "ChatGPT", "Groq"];
+const models: Model[] = ["Gemini", "ChatGPT"];
 
 function ModelSwitcher({
   defaultModel = "Gemini",
