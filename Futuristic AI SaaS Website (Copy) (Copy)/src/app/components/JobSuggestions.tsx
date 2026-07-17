@@ -127,6 +127,8 @@ export function FindJobs() {
   const [error, setError] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
 
+  const API_URL=import.meta.env.VITE_API_URL
+
   const handleSearch = async () => {
     if (!user) {
       openLogin();
@@ -144,7 +146,7 @@ export function FindJobs() {
 
     try {
       const res = await axios.post(
-        "http://localhost:4000/api/jobSuggestions/generateJobSuggestions",
+        `${API_URL}/jobSuggestions/generateJobSuggestions`,
         form
       );
       setJobs(res.data);

@@ -149,6 +149,8 @@ export function ExperiencedResumePage() {
   const { openLogin } = useAuthModal();
   const navigate      = useNavigate();
 
+  const API_URL=import.meta.env.VITE_API_URL
+
   // ── State ──
   const [resumeFile, setResumeFile]         = useState<File | null>(null);
   const [isDragging, setIsDragging]         = useState(false);
@@ -185,7 +187,7 @@ export function ExperiencedResumePage() {
       setLoading(true);
       const formData = new FormData();
       formData.append("resume", resumeFile);
-      const res = await axios.post("http://localhost:4000/api/public/analyze", formData, { headers: { "Content-Type": "multipart/form-data", ...await getAuthHeaders() } });
+      const res = await axios.post(`${API_URL}/public/analyze`, formData, { headers: { "Content-Type": "multipart/form-data", ...await getAuthHeaders() } });
       const { atsScore, analysis } = res.data;
       setAtsResult(atsScore || null);
       setAiSuggestions(analysis?.weaknesses && Array.isArray(analysis.weaknesses) ? analysis.weaknesses : []);
@@ -203,7 +205,7 @@ export function ExperiencedResumePage() {
       const formData = new FormData();
       formData.append("resume", resumeFile);
       if (jobDescription.trim()) formData.append("jobDescription", jobDescription.trim());
-      const res = await axios.post("http://localhost:4000/api/public/analyze", formData, { headers: { "Content-Type": "multipart/form-data", ...await getAuthHeaders() } });
+      const res = await axios.post(`${API_URL}/public/analyze`, formData, { headers: { "Content-Type": "multipart/form-data", ...await getAuthHeaders() } });
       const { optimizedResume, atsScore, certificationSuggestions } = res.data;
 
       // Navigate to the new OptimisedResumePage, passing all data via state

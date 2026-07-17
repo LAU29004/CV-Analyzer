@@ -611,4 +611,22 @@ export const renderModernTemplate = (doc, r) => {
     });
     my += 2;
   }
+
+const range = doc.bufferedPageRange();
+  const lastPageIdx = range.start + range.count - 1; // 0 or 1, since MAX_PAGES = 2
+  doc.switchToPage(lastPageIdx);
+
+  const originalBottomMargin = doc.page.margins.bottom;
+  doc.page.margins.bottom = 0;
+
+  const footerY = PAGE_H - 22; // near bottom of that page
+  doc.font("Helvetica-Oblique").fontSize(6.5).fillColor(COLORS.lightMuted)
+    .text(
+      "This resume has been professionally prepared by M CAD Solutions based on the information provided by the candidate.",
+      PAGE_PADDING,
+      footerY,
+      { width: PAGE_W - 2 * PAGE_PADDING, align: "center" }
+    );
+
+  doc.page.margins.bottom = originalBottomMargin;
 };

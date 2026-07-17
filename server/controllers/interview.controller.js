@@ -1,7 +1,7 @@
 // interview.controller.js
 import { generateGeminiContent } from "../config/gemini.js";
 import { buildInterviewPrompt } from "../services/prompt.service.js";
-
+import { getActiveModelClient } from "../services/aiClient.js";
 export const generateInterview = async (req, res) => {
   try {
     const { jobRole, jobDescription, experienceLevel, questionTypes } = req.body;
@@ -19,8 +19,8 @@ export const generateInterview = async (req, res) => {
       experienceLevel,
       questionTypes: questionTypes || ["technical", "behavioral"],
     });
-
-    const result = await generateGeminiContent(prompt);
+    const model = await getActiveModelClient();
+    const result = await model.generateContent(prompt);
     const response = await result.response;
     let raw = response.text();
 

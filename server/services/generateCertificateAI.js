@@ -5,7 +5,7 @@ import {
   getRecommendedCertificatesForRole,
   mapRoleToDomain,
 } from "./certificateDataService.js";
-
+import { getActiveModelClient } from "../services/aiClient.js";
 /**
  * Enrich AI-generated cert objects with `link` from the DB.
  * Tries exact name match first, then case-insensitive partial match.
@@ -174,7 +174,8 @@ Output format (strict):
 `;
 
   try {
-    const result = await generateGeminiContent(prompt);
+    const model = await getActiveModelClient();
+    const result = await model.generateContent(prompt);
     const raw = await result.response.text();
     const parsed = safeParseArray(raw);
 

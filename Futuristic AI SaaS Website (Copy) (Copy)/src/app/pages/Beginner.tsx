@@ -145,6 +145,8 @@ export function BeginnerResumePage() {
   const { openLogin } = useAuthModal();
   const navigate      = useNavigate();
 
+  const API_URL=import.meta.env.VITE_API_URL
+
   const [step, setStep]           = useState(0);
   const [direction, setDirection] = useState(1);
   const [higherEd, setHigherEd]   = useState<"class12"|"diploma">("class12");
@@ -257,13 +259,13 @@ export function BeginnerResumePage() {
       if (Object.keys(formatErrors).length>0) { alert("Fix highlighted errors first."); return; }
       const payload = buildPayload();
       if (!selectedSummary) {
-        const res = await axios.post("http://localhost:4000/api/public/summaries",
+        const res = await axios.post(`${API_URL}/public/summaries`,
           {useAI:true,role:form.role,skills:payload.skills,experienceCount:(payload.experience as any[])?.length||0,education:payload.education},
           {headers:await getAuthHeaders()});
         setSummaryOptions(res.data.summaries);
         return;
       }
-      const res = await axios.post("http://localhost:4000/api/public/create-resume",payload,{headers:await getAuthHeaders()});
+      const res = await axios.post(`${API_URL}/public/create-resume`,payload,{headers:await getAuthHeaders()});
       const {optimizedResume}=res.data;
       navigate("/beginner-generated-resume",{
         state:{

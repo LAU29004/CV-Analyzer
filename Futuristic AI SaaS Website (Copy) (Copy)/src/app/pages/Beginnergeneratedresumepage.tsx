@@ -115,6 +115,8 @@ export function BeginnerGeneratedResumePage() {
   const [pdfUrl, setPdfUrl]                     = useState<string | null>(null);
   const [pdfLoading, setPdfLoading]             = useState(false);
 
+  const API_URL=import.meta.env.VITE_API_URL
+
   // ── Auth headers ──
   const getAuthHeaders = async (): Promise<Record<string, string>> => {
     if (!user) return {};
@@ -128,7 +130,7 @@ export function BeginnerGeneratedResumePage() {
       setPdfLoading(true);
       if (pdfUrl) { URL.revokeObjectURL(pdfUrl); setPdfUrl(null); }
       const res = await axios.post(
-        "http://localhost:4000/api/public/export-pdf",
+        `${API_URL}/public/export-pdf`,
         { optimizedResume, template },
         { responseType: "blob", headers: await getAuthHeaders() }
       );
@@ -143,7 +145,7 @@ export function BeginnerGeneratedResumePage() {
     if (!optimizedResume) return;
     try {
       const res = await axios.post(
-        "http://localhost:4000/api/public/export-pdf",
+        `${API_URL}/public/export-pdf`,
         { optimizedResume, template: selectedTemplate },
         { responseType: "blob", headers: await getAuthHeaders() }
       );

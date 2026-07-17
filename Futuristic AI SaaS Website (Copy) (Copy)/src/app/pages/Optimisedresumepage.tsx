@@ -215,6 +215,8 @@ export function OptimisedResumePage() {
     jobDescription?: string;
   } | null;
 
+  const API_URL=import.meta.env.VITE_API_URL
+
   const optimizedResume        = state?.optimizedResume        ?? null;
   const beforeAts              = state?.beforeAts              ?? null;
   const afterAts               = state?.afterAts               ?? null;
@@ -239,7 +241,7 @@ export function OptimisedResumePage() {
       setPdfLoading(true);
       if (pdfUrl) { URL.revokeObjectURL(pdfUrl); setPdfUrl(null); }
       const res = await axios.post(
-        "http://localhost:4000/api/public/export-pdf",
+        `${API_URL}/public/export-pdf`,
         { optimizedResume, template },
         { responseType: "blob", headers: await getAuthHeaders() }
       );
@@ -254,7 +256,7 @@ export function OptimisedResumePage() {
     if (!optimizedResume) return;
     try {
       const res = await axios.post(
-        "http://localhost:4000/api/public/export-pdf",
+        `${API_URL}/public/export-pdf`,
         { optimizedResume, template: selectedTemplate },
         { responseType: "blob", headers: await getAuthHeaders() }
       );

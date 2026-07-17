@@ -23,7 +23,7 @@ let geminiQueue = Promise.resolve();
 let lastGeminiRequestAt = 0;
 
 export const model = genAI.getGenerativeModel({
-  model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
+  model: "gemini-3.5-flash",
   generationConfig: {
     temperature: 0.7,
     responseMimeType: "application/json",

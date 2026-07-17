@@ -1,5 +1,5 @@
 import { ENABLE_AI } from "../config/env.js";
-import { generateGeminiContent } from "../config/gemini.js";
+import { getActiveModelClient } from "../services/aiClient.js";
 import Certificate from "../models/Certificate.js";
 import {
   getRecommendedCertificatesForRole,
@@ -316,7 +316,8 @@ Output format (strict):
 `;
 
     try {
-      const result = await generateGeminiContent(prompt);
+      const model = await getActiveModelClient();
+      const result = await model.generateContent(prompt);
       const raw = await result.response.text();
       const parsed = safeParseArray(raw);
 

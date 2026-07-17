@@ -16,6 +16,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useAuthModal } from "../context/AuthModalContext";
 
+
 type InputMode = "resume" | "manual";
 type Screen = "input" | "results";
 
@@ -48,6 +49,8 @@ export function RoadmapGenerator({ onBack }: RoadmapGeneratorProps) {
   const [experienceLevel, setExperienceLevel] = useState("");
   const [targetRole, setTargetRole] = useState("");
   const [jobDescription, setJobDescription] = useState("");
+
+  const API_URL = import.meta.env.VITE_API_URL;
 
   const colorMap: any = {
     violet: "bg-violet-500/10 border-violet-500/30 text-violet-400",
@@ -99,7 +102,7 @@ export function RoadmapGenerator({ onBack }: RoadmapGeneratorProps) {
     let response;
 
     if (inputMode === "manual") {
-      response = await fetch("http://localhost:4000/api/roadmap/generate", {
+      response = await fetch(`${API_URL}/roadmap/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -116,7 +119,7 @@ export function RoadmapGenerator({ onBack }: RoadmapGeneratorProps) {
       formData.append("experienceLevel", experienceLevel);  // Use actual state value
       if (jobDescription) formData.append("jobDescription", jobDescription);  // Add this
 
-      response = await fetch("http://localhost:4000/api/roadmap/generate", {
+      response = await fetch(`${API_URL}/roadmap/generate`, {
         method: "POST",
         body: formData,
       });

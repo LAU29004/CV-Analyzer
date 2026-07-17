@@ -7,12 +7,12 @@ import { generateTemplateSummaries as generateSummary } from "../services/summar
 import { recommendCertifications } from "../services/certificationRecommender.js";
 import { generateCertificateAI } from "../services/generateCertificateAI.js";
 import { getProjectSuggestions } from "../services/projectSuggestionService.js";
-
+import { getActiveModelClient } from "../services/aiClient.js";
 export const createResume = async (req, res) => {
   try {
     const payload = req.body;
     console.log(JSON.stringify(payload.education, null, 2));
-
+    const model = await getActiveModelClient();
     const {
       full_name,
       role,
