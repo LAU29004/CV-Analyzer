@@ -1,6 +1,5 @@
 import { ENABLE_AI } from "../config/env.js";
-import { model } from "../config/gemini.js";
-import { retry } from "../utils/retry.js";
+import { generateGeminiContent } from "../config/gemini.js";
 import { safeAI } from "../utils/safeAI.js";
 import { generateSoftSkills } from "../services/softSkillGenerator.js";
 // Doc 4 updated the import alias to generateTemplateSummaries — kept here
@@ -181,7 +180,7 @@ BASE:
 ${JSON.stringify(baseResume)}
 `;
 
-            const r = await retry(() => model.generateContent(prompt));
+            const r = await generateGeminiContent(prompt);
             const raw = await r.response.text();
 
             // Strip markdown fences before parsing (Gemini sometimes wraps in ```json)
@@ -232,7 +231,7 @@ Skills:
 ${skills.join(", ")}
 `;
 
-          const r = await retry(() => model.generateContent(prompt));
+          const r = await generateGeminiContent(prompt);
           const raw = await r.response.text();
 
           // Strip markdown fences before parsing

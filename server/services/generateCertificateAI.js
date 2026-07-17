@@ -1,5 +1,5 @@
 import { ENABLE_AI } from "../config/env.js";
-import { model } from "../config/gemini.js";
+import { generateGeminiContent } from "../config/gemini.js";
 import Certificate from "../models/Certificate.js";
 import {
   getRecommendedCertificatesForRole,
@@ -71,6 +71,11 @@ const CERT_FALLBACKS = {
     { name: "TensorFlow Developer Certificate", organization: "Google", skills: ["TensorFlow", "Deep Learning"] },
     { name: "AWS Machine Learning Specialty", organization: "Amazon Web Services", skills: ["AWS", "ML"] },
   ],
+  robotics: [
+    { name: "Introduction to Robotics", organization: "MCAD Solutions", skills: ["Robotics", "Sensors", "Control Systems"] },
+    { name: "Arduino & ESP32 for Robotics", organization: "MCAD Solutions", skills: ["Arduino", "ESP32", "IoT"] },
+    { name: "Robot Operating System (ROS)", organization: "MCAD Solutions", skills: ["ROS", "Gazebo", "Linux"] },
+  ],
 };
 
 const getHardcodedFallback = (role, experienceLevel) => {
@@ -126,6 +131,11 @@ export async function generateCertificateAI({ role, skills = [], experienceLevel
   const domain = mapRoleToDomain(role);
   if (domain === "mechanical") {
     console.log("[generateCertificateAI] Mechanical role – fetching MCAD certs from DB");
+    return getDBCerts(role, experienceLevel, skills);
+  }
+
+  if (domain === "robotics") {
+    console.log("[generateCertificateAI] Robotics role – fetching MCAD certs from DB");
     return getDBCerts(role, experienceLevel, skills);
   }
 

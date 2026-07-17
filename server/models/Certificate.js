@@ -27,7 +27,7 @@ const certificateSchema = new mongoose.Schema(
         "data-science", "cloud", "ai-ml",
         "devops", "uiux",
         // Engineering / non-IT domains
-        "mechanical", "civil", "electrical",
+        "mechanical", "robotics", "civil", "electrical",
         "project-management", "cybersecurity",
         "mobile", "embedded", "other",
       ],

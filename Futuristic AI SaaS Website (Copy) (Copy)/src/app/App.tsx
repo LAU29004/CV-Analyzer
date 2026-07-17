@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Link,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import {
   Menu,
   X,
@@ -36,10 +43,12 @@ import { useAuth } from "./context/AuthContext";
 import { signOut } from "firebase/auth";
 import { auth } from "./config/firebase";
 import DashboardRoute from "./routes/Dashboard";
+const mcadLogo = new URL("../assets/d-removebg-preview.png", import.meta.url)
+  .href;
 
 function RoadmapGenerateRoute() {
   const navigate = useNavigate();
-  return <RoadmapGenerator onBack={() => navigate('/')} />;
+  return <RoadmapGenerator onBack={() => navigate("/")} />;
 }
 
 // ─────────────────────────────────────────────
@@ -56,10 +65,10 @@ function Navbar() {
   const navigate = useNavigate();
 
   // ── Helpers ──
-  const toggleTheme = () => {
-    setIsDark((d) => !d);
-    document.documentElement.classList.toggle("dark");
-  };
+  // const toggleTheme = () => {
+  //   setIsDark((d) => !d);
+  //   document.documentElement.classList.toggle("dark");
+  // };
 
   const handleLogout = async () => {
     try {
@@ -108,13 +117,17 @@ function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 backdrop-blur-xl bg-background/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-
           {/* ── Logo ── */}
           <button
             onClick={() => scrollToSection("hero")}
             className="flex items-center gap-2"
             aria-label="Go to home"
           >
+            <img
+              src={mcadLogo}
+              alt="MCAD Logo"
+              className="relative w-22 h-22 object-contain shrink-0 rounded-3xl brightness-110 contrast-125"
+            />
             <div className="relative">
               <Sparkles className="w-8 h-8 text-violet-400" />
               <div className="absolute inset-0 blur-lg bg-violet-400/50 -z-10" />
@@ -136,13 +149,17 @@ function Navbar() {
               </button>
             ))}
 
-            <button
+            {/* <button
               onClick={toggleTheme}
               className="p-2 rounded-lg hover:bg-accent transition-colors"
               aria-label="Toggle theme"
             >
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
+              {isDark ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
+            </button> */}
 
             {user ? (
               <div className="flex items-center gap-3">
@@ -194,18 +211,26 @@ function Navbar() {
 
           {/* ── Mobile header icons ── */}
           <div className="md:hidden flex items-center gap-2">
-            <button
+            {/* <button
               onClick={toggleTheme}
               className="p-2 rounded-lg hover:bg-accent transition-colors"
               aria-label="Toggle theme"
             >
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
+              {isDark ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
+            </button> */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="p-2 rounded-lg hover:bg-accent transition-colors"
             >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </button>
           </div>
         </div>
@@ -259,13 +284,19 @@ function Navbar() {
             ) : (
               <>
                 <button
-                  onClick={() => { openLogin(); setIsMenuOpen(false); }}
+                  onClick={() => {
+                    openLogin();
+                    setIsMenuOpen(false);
+                  }}
                   className="w-full px-6 py-2 rounded-full border border-violet-500/50 hover:bg-violet-500/10 transition-all text-sm"
                 >
                   Login
                 </button>
                 <button
-                  onClick={() => { openSignup(); setIsMenuOpen(false); }}
+                  onClick={() => {
+                    openSignup();
+                    setIsMenuOpen(false);
+                  }}
                   className="w-full px-6 py-2 rounded-full bg-gradient-to-r from-blue-500 via-violet-500 to-cyan-500 hover:shadow-lg hover:shadow-violet-500/50 transition-all text-sm"
                 >
                   Sign Up
@@ -283,7 +314,6 @@ function Navbar() {
 // App
 // ─────────────────────────────────────────────
 export default function App() {
-
   useEffect(() => {
     document.documentElement.classList.add("dark");
   }, []);
@@ -303,11 +333,11 @@ export default function App() {
                 element={
                   <>
                     <Hero />
-                    
+
                     <Problems />
                     <Solutions />
                     <Features />
-                      
+
                     <Stats />
                     <CTA />
                   </>
@@ -319,9 +349,7 @@ export default function App() {
                   <DashboardRoute>
                     <Dashboard />
                   </DashboardRoute>
-                  
                 }
-              
               />
 
               <Route
@@ -352,10 +380,18 @@ export default function App() {
               />
 
               <Route path="/resume/beginner" element={<BeginnerResumePage />} />
-              <Route path="/beginner-generated-resume" element={<BeginnerGeneratedResumePage />} />
-              <Route path="/resume/experienced" element={<ExperiencedResumePage />} />
-              <Route path="/optimised-resume" element={<OptimisedResumePage />} />
-              
+              <Route
+                path="/beginner-generated-resume"
+                element={<BeginnerGeneratedResumePage />}
+              />
+              <Route
+                path="/resume/experienced"
+                element={<ExperiencedResumePage />}
+              />
+              <Route
+                path="/optimised-resume"
+                element={<OptimisedResumePage />}
+              />
 
               {/* 🔹 Admin Page (Protected) */}
               <Route
@@ -367,11 +403,11 @@ export default function App() {
                 }
               />
               {/* 🔹 Roadmap generator route (direct page) */}
-              <Route path="/roadmap/generate" element={<RoadmapGenerateRoute />} />
+              <Route
+                path="/roadmap/generate"
+                element={<RoadmapGenerateRoute />}
+              />
             </Routes>
-
-
-            <Footer />
           </div>
         </BrowserRouter>
       </AuthModalProvider>

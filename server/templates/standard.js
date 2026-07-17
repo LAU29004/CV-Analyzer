@@ -75,12 +75,24 @@ export const renderStandardTemplate = (doc, r) => {
     });
   }
 
-  /* PROJECTS */
-  if (hasProjects(r.projects)) {
+  /* PROJECTS ================================================
+     Hardened: the AI-extraction step (atsController.js) has been
+     inconsistent about which key it puts tech stack under
+     ("technologies" as array vs "tech"/"techStack" as string), and
+     it's not guaranteed every project comes back with bullets. This
+     block normalizes those variants instead of silently dropping
+     content when a shape doesn't match exactly.
+     ============================================================ */
+  const projectList = Array.isArray(r.projects) ? r.projects : [];
+
+  if (projectList.length > 0) {
     sectionTitle(doc, "Projects");
 
-    r.projects.forEach(p => {
-      doc.font("Helvetica-Bold").fontSize(11).text(p.title);
+    projectList.forEach(p => {
+      if (!p) return; // skip null/undefined entries defensively
+
+      const title = p.title || p.name || "Untitled Project";
+      doc.font("Helvetica-Bold").fontSize(11).text(title);
 
       // description is a string — render as italic overview paragraph
       if (hasText(p.description) && typeof p.description === "string") {
@@ -90,16 +102,37 @@ export const renderStandardTemplate = (doc, r) => {
         doc.fillColor("#000");
       }
 
-      if (hasArray(p.technologies)) {
+      // Normalize tech stack: could be `technologies` (array),
+      // `tech` or `techStack` (string or array).
+      let techList = [];
+      if (hasArray(p.technologies)) techList = p.technologies;
+      else if (hasArray(p.tech)) techList = p.tech;
+      else if (hasArray(p.techStack)) techList = p.techStack;
+      else if (hasText(p.technologies)) techList = p.technologies.split(",").map(s => s.trim());
+      else if (hasText(p.tech)) techList = p.tech.split(",").map(s => s.trim());
+      else if (hasText(p.techStack)) techList = p.techStack.split(",").map(s => s.trim());
+
+      if (techList.length > 0) {
         doc.font("Helvetica").fontSize(9).fillColor("#555")
-          .text(`Technologies: ${p.technologies.join(", ")}`);
+          .text(`Technologies: ${techList.join(", ")}`);
         doc.fillColor("#000");
       }
 
       doc.moveDown(0.4);
 
-      // bullets is the achievement list — always an array
-      renderBullets(doc, Array.isArray(p.bullets) ? p.bullets : []);
+      // bullets is the achievement list — accept `bullets` or
+      // `points`/`highlights` as fallbacks, and fall back to
+      // description-as-single-bullet if nothing else is present.
+      const bullets = Array.isArray(p.bullets) ? p.bullets
+        : Array.isArray(p.points) ? p.points
+        : Array.isArray(p.highlights) ? p.highlights
+        : [];
+
+      if (bullets.length > 0) {
+        renderBullets(doc, bullets);
+      } else if (hasText(p.description)) {
+        renderBullets(doc, [p.description]);
+      }
 
       doc.moveDown(0.6);
     });

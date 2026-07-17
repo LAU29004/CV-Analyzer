@@ -70,6 +70,11 @@ const baseCerts = {
     "TensorFlow Developer",
     "AWS ML Specialty",
   ],
+  robotics: [
+    "Introduction to Robotics",
+    "Arduino & ESP32 for Robotics",
+    "Robot Operating System (ROS)",
+  ],
 };
 
 /* ─── Detailed cert metadata (used in hardcoded last-resort fallback) ─── */
@@ -157,6 +162,24 @@ const certDetails = {
     skills: ["TensorFlow", "Deep Learning"],
     description:
       "Validates hands-on TensorFlow skills for implementing deep learning models.",
+  },
+  "Introduction to Robotics": {
+    organization: "MCAD Solutions",
+    skills: ["Robotics", "Sensors", "Control Systems"],
+    description:
+      "Learn the fundamentals of robotics including robot kinematics, sensors, actuators, and control systems.",
+  },
+  "Arduino & ESP32 for Robotics": {
+    organization: "MCAD Solutions",
+    skills: ["Arduino", "ESP32", "IoT"],
+    description:
+      "Build robotics projects using Arduino and ESP32, covering sensors, motors, Wi-Fi, Bluetooth, and IoT integration.",
+  },
+  "Robot Operating System (ROS)": {
+    organization: "MCAD Solutions",
+    skills: ["ROS", "Gazebo", "Linux"],
+    description:
+      "Learn ROS for robot programming, navigation, mapping, autonomous systems, and simulation using Gazebo.",
   },
 };
 
@@ -247,12 +270,16 @@ export async function recommendCertificationsWithDB({
   const domain = mapRoleToDomain(role);
 
   // ── Mechanical domain → always use DB (MCAD courses), never AI ──
-  if (domain === "mechanical") {
-    console.log("[recommendCertifications] Mechanical role – fetching MCAD certs from DB");
-    certResults = await getDBCerts(role, skills, experienceLevel,);
-    source = "db";
+  const dbOnlyDomains = ["mechanical", "robotics"];
 
-  } else if (ENABLE_AI !== true || useAI === false) {
+if (dbOnlyDomains.includes(domain)) {
+  console.log(
+    `[recommendCertifications] ${domain} role – fetching courses from DB`
+  );
+
+  certResults = await getDBCerts(role, skills, experienceLevel);
+  source = "db";
+} else if (ENABLE_AI !== true || useAI === false) {
     // ── AI disabled → fetch from DB ──
     console.log("[recommendCertifications] AI disabled – fetching certs from DB");
     certResults = await getDBCerts(role, skills, experienceLevel);

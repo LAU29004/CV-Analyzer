@@ -56,11 +56,6 @@ const textIncludes = (text, patterns = []) =>
   patterns.some((p) => new RegExp(p, "i").test(text));
 
 /* ================= ROLE + EXPERIENCE INFERENCE ================= */
-/**
- * Rich role detection covering engineering, ML/AI, data, cloud/devops,
- * security, mobile, web, management, and design roles.
- * Sourced from Document 1 (more comprehensive than Document 2).
- */
 const inferRoleAndExperience = (resume, rawText) => {
   let role = "Full Stack Developer";
   let experienceLevel = "fresher";
@@ -125,7 +120,6 @@ const inferRoleAndExperience = (resume, rawText) => {
   ) {
     role = "Machine Learning Engineer";
   }
-  // Data
   else if (textIncludes(text, ["data scientist", "data science"])) {
     role = "Data Scientist";
   } else if (
@@ -251,7 +245,6 @@ const inferRoleAndExperience = (resume, rawText) => {
     role = "UI/UX Designer";
   }
 
-  // ── Experience level detection ────────────────────────────────────────────
   if (
     textIncludes(text, [
       "senior",
@@ -289,12 +282,6 @@ const inferRoleAndExperience = (resume, rawText) => {
 };
 
 /* ================= SKILL EXTRACTOR FROM RAW TEXT ================= */
-/**
- * Scans raw resume text for recognisable skill keywords across ALL domains.
- * Used in both AI-on and AI-off paths to ensure extracted skills are sent
- * to the cert recommender so skill-overlap DB queries can fire.
- * Sourced from Document 1.
- */
 const ALL_SKILL_KEYWORDS = [
   // Web / Frontend
   "React",
@@ -464,15 +451,9 @@ const extractSkillsFromText = (text = "") =>
 
 /* ================= ATS SCORE ================= */
 
-/*
- * Category maximums — always sum to exactly 100:
- *   contact(15) + sections(20) + keywords(30) + experience(20)
- *   + readability(10) + formatting(5) = 100
- * Sourced from Document 2 (superior scoring system).
- */
 const BREAKDOWN_MAXES = {
-  contact: 15,
-  sections: 20,
+  contact: 10,
+  sections: 8,
   keywords: 30,
   experience: 20,
   readability: 10,
@@ -617,13 +598,6 @@ const ACTION_VERBS = [
   "coordinated",
 ];
 
-/**
- * Extracts a rich text blob from the resume OBJECT only.
- * Contact header fields are EXCLUDED to prevent phone numbers or email
- * addresses accidentally matching keyword/action-verb patterns.
- * Project description is explicitly included.
- * Sourced from Document 2.
- */
 const buildStructuredText = (resume) => {
   const parts = [
     resume.summary || "",
@@ -656,12 +630,6 @@ const buildStructuredText = (resume) => {
 };
 
 const calculateATSScore = (resume, _rawText = "") => {
-  /*
-   * structuredText: built from the resume object — used for ALL content scoring.
-   * _rawText: original uploaded PDF text — used ONLY as fallback for email/phone
-   *           detection on the analyzeResume path where header parsing may be
-   *           incomplete. Never used for keyword or section scoring.
-   */
   const structuredText = buildStructuredText(resume);
 
   const breakdown = {
@@ -677,11 +645,7 @@ const calculateATSScore = (resume, _rawText = "") => {
   const suggestions = [];
 
   /* ================================================================
-     1. CONTACT INFO  (max 15 pts)
-        email(5) + phone(4) + linkedin(3) + github(2) + location(1) = 15
-
-        LinkedIn and GitHub are ONLY credited from the header object.
-        A GitHub URL inside a project bullet MUST NOT score here.
+     1. CONTACT INFO  (max 15 pts) — email5 + phone4 + linkedin3 + github2 + location1
      ================================================================ */
   const hasEmail =
     !!resume.header?.email?.trim() ||
@@ -707,9 +671,11 @@ const calculateATSScore = (resume, _rawText = "") => {
   else suggestions.push("Add your city or location");
 
   /* ================================================================
-     2. SECTIONS COVERAGE  (max 20 pts)
-        summary(5) + skills(5) + experience(4) + education(4)
-        + projects(2) = 20  (certs add 1 bonus, capped at 20)
+     2. SECTIONS COVERAGE (max 20 pts)
+        summary5 + skills4 + experience4 + education4 + projects2 + certs1 = 20
+        NOTE: these six weights are chosen to sum EXACTLY to the category
+        max, so this category can never exceed 20 even before clamping —
+        no "bonus" points that rely on the final clamp to stay in range.
      ================================================================ */
   const hasSummary = !!(resume.summary?.trim()?.length > 20);
   const hasSkills =
@@ -733,8 +699,10 @@ const calculateATSScore = (resume, _rawText = "") => {
   if (hasCerts) breakdown.sections += 1; // bonus, capped at max below
 
   /* ================================================================
-     3. KEYWORDS  (max 30 pts)
-        Reads from resume.skills arrays first, then scans structuredText.
+     3. KEYWORDS (max 30 pts) — continuous scoring, not step buckets.
+        Two resumes with different keyword coverage now get
+        meaningfully different scores instead of being lumped into
+        the same tier.
      ================================================================ */
   const { role: inferredRole } = inferRoleAndExperience(resume, structuredText);
 
@@ -781,7 +749,7 @@ const calculateATSScore = (resume, _rawText = "") => {
   }
 
   /* ================================================================
-     4. EXPERIENCE DEPTH  (max 20 pts)
+     4. EXPERIENCE DEPTH (max 20 pts)
         roles(10) + action verbs in bullets(5) + quantified results(5)
      ================================================================ */
   const expCount = resume.experience?.length || 0;
@@ -825,7 +793,7 @@ const calculateATSScore = (resume, _rawText = "") => {
     );
 
   /* ================================================================
-     5. READABILITY  (max 10 pts)
+     5. READABILITY (max 10 pts)
         word count(4) + action verbs full resume(4) + quantified(2)
      ================================================================ */
   const wordCount = structuredText.trim().split(/\s+/).filter(Boolean).length;
@@ -860,8 +828,7 @@ const calculateATSScore = (resume, _rawText = "") => {
     );
 
   /* ================================================================
-     6. FORMATTING  (max 5 pts)
-        name(2) + section completeness(3)
+     6. FORMATTING (max 5 pts) — name(2) + section completeness(3)
      ================================================================ */
   const hasName = !!(resume.header?.name?.trim()?.length > 0);
   if (hasName) breakdown.formatting += 2;
@@ -879,7 +846,12 @@ const calculateATSScore = (resume, _rawText = "") => {
   else if (filledSectionCount >= 3) breakdown.formatting += 1;
 
   /* ================================================================
-     TOTALS — cap every category at its max BEFORE summing
+     TOTALS
+     Every category is now structurally bounded by its own max (see
+     comments above), but we still clamp defensively here — this is a
+     safety net, not the primary guarantee, so a future edit to any
+     single category above cannot silently push totals or percentages
+     past 100% again.
      ================================================================ */
   for (const key of Object.keys(breakdown)) {
     breakdown[key] = Math.min(
@@ -918,12 +890,12 @@ const calculateATSScore = (resume, _rawText = "") => {
       totalActionVerbs,
       totalQuantified,
       filledSectionCount,
+      keywordCoverageRatio: Math.round(combinedScore) / 100,
     },
   };
 };
 
 /* ================= HARDCODED PROJECT FALLBACKS ================= */
-// Merged from both documents — Document 2 adds "description" field to each project.
 const PROJECT_FALLBACKS = {
   "frontend developer": [
     {
@@ -1043,7 +1015,6 @@ const getProjectFallback = (role) => {
 };
 
 /* ================= HARDCODED SUMMARY FALLBACKS ================= */
-// Sourced from Document 2 — not present in Document 1.
 const SUMMARY_FALLBACKS = {
   "frontend developer": [
     "Creative and detail-oriented Frontend Developer skilled in building responsive, accessible web applications using React and modern CSS. Passionate about crafting pixel-perfect UIs and optimising user experience across devices.",
@@ -1151,7 +1122,6 @@ export const analyzeResume = async (req, res) => {
       return res.status(400).json({ error: "No resume uploaded" });
     }
 
-    /* ---------- TEXT EXTRACTION ---------- */
     let resumeText = "";
 
     if (req.file.mimetype === "application/pdf") {
@@ -1168,7 +1138,6 @@ export const analyzeResume = async (req, res) => {
       return res.status(400).json({ error: "Empty resume text" });
     }
 
-    /* ---------- BASE STRUCTURE ---------- */
     const baseOptimizedResume = {
       header: {},
       summary: "",
@@ -1182,12 +1151,10 @@ export const analyzeResume = async (req, res) => {
     const aiAllowed = ENABLE_AI === true;
     logAI("AI enabled", { aiAllowed });
 
-    /* ---------- Infer role/skills from raw text (used in both paths) ---------- */
     const { role: inferredRole, experienceLevel: inferredLevel } =
       inferRoleAndExperience(baseOptimizedResume, resumeText);
     const detectedSkills = extractSkillsFromText(resumeText);
 
-    /* ---------- Non-AI fallback ---------- */
     const buildFallback = async () => {
       const rawCerts = await generateCertificateAI({
         role: inferredRole,
@@ -1281,7 +1248,6 @@ ${resumeText}
               resumeText,
             );
 
-            // Use AI-parsed skills; fall back to text-extracted skills if empty
             const aiSkills =
               mergedResume.skills.technical.length > 0
                 ? mergedResume.skills.technical
@@ -1326,11 +1292,6 @@ ${resumeText}
 };
 
 /* ================= CREATE RESUME CONTROLLER ================= */
-/**
- * Called by POST /api/public/create-resume
- * Receives structured form data, generates resume + project suggestions + certs.
- * Returns summaryOptions (3 choices) in addition to optimizedResume.
- */
 export const createResume = async (req, res) => {
   try {
     const {
@@ -1360,7 +1321,6 @@ export const createResume = async (req, res) => {
     const aiAllowed = ENABLE_AI === true;
     logAI("Beginner flow – AI enabled", { aiAllowed });
 
-    /* ---------- Build base optimizedResume from form data ---------- */
     const baseOptimizedResume = {
       header: {
         name: full_name,
@@ -1381,7 +1341,6 @@ export const createResume = async (req, res) => {
       certifications_awards: certifications,
     };
 
-    /* ---------- Infer role context for suggestions ---------- */
     const normalizedRole = role.toLowerCase();
     let inferredRole = "Full Stack Developer";
     if (/frontend|react|ui|ux/.test(normalizedRole))
@@ -1399,7 +1358,6 @@ export const createResume = async (req, res) => {
 
     let optimizedResume = { ...baseOptimizedResume };
 
-    /* ---------- Summary Options (3 AI or 3 hardcoded) ---------- */
     const inferredKey = inferredRole.toLowerCase();
     let summaryOptions =
       SUMMARY_FALLBACKS[inferredKey] || SUMMARY_FALLBACKS["default"];
@@ -1441,21 +1399,16 @@ Example format:
       }
     }
 
-    // Use first summary option as the default in optimizedResume
     optimizedResume.summary = summaryOptions[0];
 
-    /* ---------- ATS Score ---------- */
-    // Pass empty string as _rawText — all data is already in the resume object
     const atsScore = calculateATSScore(optimizedResume, "");
 
-    /* ---------- Project Suggestions (AI or fallback) ---------- */
     const projectSuggestions = await generateProjectSuggestions({
       role: inferredRole,
       skills: optimizedResume.skills.technical,
       experienceLevel,
     });
 
-    /* ---------- Certification Recommendations (AI or fallback) ---------- */
     const rawCerts = await generateCertificateAI({
       role: inferredRole,
       skills: optimizedResume.skills.technical,

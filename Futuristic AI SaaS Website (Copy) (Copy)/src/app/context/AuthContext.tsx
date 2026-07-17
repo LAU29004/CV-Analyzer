@@ -38,6 +38,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  const API_URL=import.meta.env.VITE_API_URL
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       try {
@@ -88,7 +90,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Check for a phone number saved at signup time (before MongoDB user existed)
       const pendingPhone = localStorage.getItem(`pending_phone_${fbUser.uid}`);
 
-      const response = await fetch("http://localhost:4000/api/auth/sync", {
+      const response = await fetch(`${API_URL}/auth/sync`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

@@ -34,6 +34,8 @@ export function InterviewQA() {
   const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set());
   const [error, setError] = useState('');
 
+  const API_URL=import.meta.env.VITE_API_URL
+
   const toggleQuestionType = (type: QuestionType) => {
     setSelectedTypes(prev =>
       prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
@@ -67,7 +69,7 @@ export function InterviewQA() {
     setQuestions([]);
 
     try {
-      const res = await fetch('http://localhost:4000/api/interview/generate', {
+      const res = await fetch(`${API_URL}/interview/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

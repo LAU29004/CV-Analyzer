@@ -38,12 +38,14 @@ export const hasExperience = (e) =>
 
 /**
  * Checks if projects array contains at least one valid entry.
+ * Accepts either `title` or `name` since the AI extraction step
+ * doesn't reliably use the same key for every resume.
  * @param {*} p
  * @returns {boolean}
  */
 export const hasProjects = (p) =>
   hasArray(p) &&
-  p.some((x) => hasText(x?.title));
+  p.some((x) => hasText(x?.title) || hasText(x?.name));
 
 /**
  * Checks if education entries are valid across multiple formats.

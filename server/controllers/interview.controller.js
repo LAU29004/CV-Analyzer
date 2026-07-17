@@ -1,5 +1,5 @@
 // interview.controller.js
-import { model } from "../config/gemini.js";
+import { generateGeminiContent } from "../config/gemini.js";
 import { buildInterviewPrompt } from "../services/prompt.service.js";
 import { getActiveModelClient } from "../services/aiClient.js";
 export const generateInterview = async (req, res) => {
