@@ -1,3 +1,4 @@
+const API_URL = import.meta.env.VITE_API_URL;
 export const getActiveModel = async (token: string) => {
   const response = await fetch(`${API_URL}/admin/settings/model`, {
     headers: {
@@ -10,7 +11,7 @@ export const getActiveModel = async (token: string) => {
   const data = await response.json();
   return data.activeModel;
 };
-const API_URL = import.meta.env.VITE_API_URL;
+
 export const updateActiveModel = async (
   token: string,
   model: "Gemini" | "ChatGPT"
