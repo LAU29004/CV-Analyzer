@@ -65,10 +65,10 @@ function Navbar() {
   const navigate = useNavigate();
 
   // ── Helpers ──
-  const toggleTheme = () => {
-    setIsDark((d) => !d);
-    document.documentElement.classList.toggle("dark");
-  };
+  // const toggleTheme = () => {
+  //   setIsDark((d) => !d);
+  //   document.documentElement.classList.toggle("dark");
+  // };
 
   const handleLogout = async () => {
     try {
@@ -149,7 +149,7 @@ function Navbar() {
               </button>
             ))}
 
-            <button
+            {/* <button
               onClick={toggleTheme}
               className="p-2 rounded-lg hover:bg-accent transition-colors"
               aria-label="Toggle theme"
@@ -159,7 +159,7 @@ function Navbar() {
               ) : (
                 <Moon className="w-5 h-5" />
               )}
-            </button>
+            </button> */}
 
             {user ? (
               <div className="flex items-center gap-3">
@@ -211,7 +211,7 @@ function Navbar() {
 
           {/* ── Mobile header icons ── */}
           <div className="md:hidden flex items-center gap-2">
-            <button
+            {/* <button
               onClick={toggleTheme}
               className="p-2 rounded-lg hover:bg-accent transition-colors"
               aria-label="Toggle theme"
@@ -221,7 +221,7 @@ function Navbar() {
               ) : (
                 <Moon className="w-5 h-5" />
               )}
-            </button>
+            </button> */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="p-2 rounded-lg hover:bg-accent transition-colors"
