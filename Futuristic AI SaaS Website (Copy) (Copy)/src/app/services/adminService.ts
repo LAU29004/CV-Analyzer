@@ -1,5 +1,5 @@
 export const getActiveModel = async (token: string) => {
-  const response = await fetch(`${API_URL}/api/admin/settings/model`, {
+  const response = await fetch(`${API_URL}/admin/settings/model`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -15,7 +15,7 @@ export const updateActiveModel = async (
   token: string,
   model: "Gemini" | "ChatGPT"
 ) => {
-  const response = await fetch(`${API_URL}/api/admin/settings/model`, {
+  const response = await fetch(`${API_URL}/admin/settings/model`, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -31,7 +31,7 @@ export const updateActiveModel = async (
 };
 
 export const getAllUsers = async (token: string) => {
-  const response = await fetch(`${API_URL}/api/admin/users`, {
+  const response = await fetch(`${API_URL}/admin/users`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
