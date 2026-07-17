@@ -1,5 +1,5 @@
 import { ENABLE_AI } from "../config/env.js";
-import { model } from "../config/gemini.js";
+import { getActiveModelClient } from "../services/aiClient.js";
 import { retry } from "./retry.js";
 
 /**
@@ -50,25 +50,24 @@ FORMAT:
   "summary 3"
 ]
 `;
-console.log("🤖 [AI] ENABLE_AI:", ENABLE_AI);
-console.log("🤖 [AI] Calling Gemini with prompt:");
-console.log(prompt);
+    console.log("🤖 [AI] ENABLE_AI:", ENABLE_AI);
+    console.log("🤖 [AI] Calling Gemini with prompt:");
+    console.log(prompt);
+    const model = await getActiveModelClient();
     const res = await retry(() => model.generateContent(prompt));
     console.log("🤖 [AI] Gemini response received");
-const raw = (await res.response.text())
-  .replace(/```json|```/g, "")
-  .trim();
+    const raw = (await res.response.text()).replace(/```json|```/g, "").trim();
 
-console.log("🤖 [AI] RAW GEMINI OUTPUT:\n", raw);
+    console.log("🤖 [AI] RAW GEMINI OUTPUT:\n", raw);
 
-// 🔥 Extract first JSON array safely
-const match = raw.match(/\[[\s\S]*\]/);
+    // 🔥 Extract first JSON array safely
+    const match = raw.match(/\[[\s\S]*\]/);
 
-if (!match) {
-  throw new Error("No JSON array found in AI response");
-}
+    if (!match) {
+      throw new Error("No JSON array found in AI response");
+    }
 
-const parsed = JSON.parse(match[0]);
+    const parsed = JSON.parse(match[0]);
 
     if (!Array.isArray(parsed) || parsed.length !== 3) {
       throw new Error("Invalid AI summary format");
