@@ -27,7 +27,7 @@ app.use(
     origin: [
       "http://localhost:5173", // Vite
       "http://localhost:3000" , // CRA / Next
-      "https://cv-analyzer-sand.vercel.app/"
+      "https://cv-analyzer-sand.vercel.app"
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
