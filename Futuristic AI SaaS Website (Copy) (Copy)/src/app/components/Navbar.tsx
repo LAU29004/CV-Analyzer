@@ -41,7 +41,10 @@ export function Navbar() {
 
     const emailLocalPart = user?.email?.split("@")[0]?.trim();
     if (emailLocalPart) {
-      const cleaned = emailLocalPart.replace(/[._-]+/g, " ").replace(/\s+/g, " ").trim();
+      const cleaned = emailLocalPart
+        .replace(/[._-]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
       return cleaned ? toTitleCase(cleaned) : "User";
     }
 
@@ -50,9 +53,6 @@ export function Navbar() {
 
   const displayUserName = resolveDisplayName();
 
-  // ─────────────────────────────────────────────
-  // Helpers
-  // ─────────────────────────────────────────────
   const toggleTheme = () => {
     setIsDark((d) => !d);
     document.documentElement.classList.toggle("dark");
@@ -81,16 +81,10 @@ export function Navbar() {
     }
   };
 
-  // ─────────────────────────────────────────────
-  // Nav links config
-  // ─────────────────────────────────────────────
   const navLinks: { label: string; id?: string; path?: string }[] = [
-    //{ label: "Dashboard", id: "dashboard" },
     { label: "Career Roadmap", path: "/roadmap" },
     { label: "Interview Q&A", path: "/interview-qa" },
     { label: "Job Suggestions", path: "/job-suggestions" },
-    // { label: "Features", id: "features" },
-    // { label: "Solutions", id: "solutions" },
   ];
 
   const handleNavClick = ({ id, path }: { id?: string; path?: string }) => {
@@ -111,15 +105,16 @@ export function Navbar() {
           {/* ── Logo ── */}
           <button
             onClick={() => scrollToSection("hero")}
-            className="flex items-center gap-3 p-3 rounded-2xl 
-             cursor-pointer border bg-white
-             hover:shadow-xl hover:scale-105 
-             transition-all duration-300"
+            className="flex items-center gap-3 px-4 py-2 rounded-2xl
+            border bg-white
+            hover:shadow-xl hover:scale-105
+            transition-all duration-300"
           >
-            <Sparkles className="w-8 h-8 text-violet-400" />
+            <Sparkles className="w-7 h-7 text-red-500" />
 
             <span className="text-xl font-semibold text-gray-800">
               CV Analyzer
+              <h1 className="text-9xl">HELLO</h1>
             </span>
           </button>
 
@@ -132,6 +127,7 @@ export function Navbar() {
               <Shield className="w-4 h-4" />
               Dashboard
             </Link>
+
             {navLinks.map(({ label, id, path }) => (
               <button
                 key={id ?? path ?? label}
@@ -156,7 +152,6 @@ export function Navbar() {
 
             {user ? (
               <div className="flex items-center gap-3">
-                {/* User badge */}
                 <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/30">
                   <UserIcon className="w-4 h-4 text-violet-400" />
                   <span className="text-sm text-violet-400 max-w-[140px] truncate">
@@ -164,7 +159,6 @@ export function Navbar() {
                   </span>
                 </div>
 
-                {/* Admin link */}
                 {isAdmin && (
                   <Link
                     to="/admin"
@@ -175,7 +169,6 @@ export function Navbar() {
                   </Link>
                 )}
 
-                {/* Logout */}
                 <button
                   onClick={handleLogout}
                   className="px-4 py-2 rounded-full border border-red-500/50 hover:bg-red-500/10 transition-colors flex items-center gap-2 text-sm"
@@ -245,7 +238,6 @@ export function Navbar() {
 
             {user ? (
               <>
-                {/* User badge */}
                 <div className="py-2 px-4 rounded-lg bg-violet-500/10 border border-violet-500/30 flex items-center gap-2">
                   <UserIcon className="w-4 h-4 text-violet-400" />
                   <p className="text-sm text-violet-400 truncate">
@@ -253,7 +245,6 @@ export function Navbar() {
                   </p>
                 </div>
 
-                {/* Admin link */}
                 {isAdmin && (
                   <Link
                     to="/admin"
@@ -265,7 +256,6 @@ export function Navbar() {
                   </Link>
                 )}
 
-                {/* Logout */}
                 <button
                   onClick={handleLogout}
                   className="w-full px-6 py-2 rounded-full border border-red-500/50 hover:bg-red-500/10 flex items-center justify-center gap-2 text-sm"

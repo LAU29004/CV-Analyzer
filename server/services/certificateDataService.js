@@ -181,12 +181,11 @@ export const CERTIFICATES_BY_DOMAIN = {
       skills: ["UX Design", "Research", "Prototyping"],
     },
   ],
-    mechanical: [
+  mechanical: [
     {
       name: "UGNX",
       organization: "MCAD Solutions",
-      description:
-        "UGNX training focuses on advanced CAD modeling and design widely used in mechanical and automotive industries.",
+      description: "UGNX training focuses on advanced CAD modeling and design widely used in mechanical and automotive industries.",
       level: "Beginner",
       skills: ["CAD", "3D Modeling", "Design"],
       link: "https://mcadsolution.com/domain-courses/",
@@ -194,8 +193,7 @@ export const CERTIFICATES_BY_DOMAIN = {
     {
       name: "SOLIDWORKS",
       organization: "MCAD Solutions",
-      description:
-        "Covers 3D design, simulation, and product development widely used in mechanical engineering industries.",
+      description: "Covers 3D design, simulation, and product development widely used in mechanical engineering industries.",
       level: "Beginner",
       skills: ["SolidWorks", "3D Design", "Simulation"],
       link: "https://mcadsolution.com/domain-courses/",
@@ -203,8 +201,7 @@ export const CERTIFICATES_BY_DOMAIN = {
     {
       name: "CATIA V5",
       organization: "Dassault Systems / MCAD Solutions",
-      description:
-        "CATIA V5 is a powerful CAD software used in automotive, aerospace & manufacturing industries for 3D product design.",
+      description: "CATIA V5 is a powerful CAD software used in automotive, aerospace & manufacturing industries for 3D product design.",
       level: "Intermediate",
       skills: ["CATIA", "CAD", "Product Design"],
       link: "https://mcadsolution.com/domain-courses/",
@@ -212,8 +209,7 @@ export const CERTIFICATES_BY_DOMAIN = {
     {
       name: "BIW Fixture Design",
       organization: "MCAD Solutions",
-      description:
-        "Provides advanced knowledge in Body-in-White fixture design, improving job opportunities in automotive and mechanical design fields.",
+      description: "Provides advanced knowledge in Body-in-White fixture design, improving job opportunities in automotive and mechanical design fields.",
       level: "Intermediate",
       skills: ["BIW", "Fixture Design", "Automotive"],
       link: "https://mcadsolution.com/domain-courses/",
@@ -221,8 +217,7 @@ export const CERTIFICATES_BY_DOMAIN = {
     {
       name: "Automotive Interior Plastic Trims",
       organization: "MCAD Solutions",
-      description:
-        "Industry-oriented course focused on interior plastic components design used in automotive engineering.",
+      description: "Industry-oriented course focused on interior plastic components design used in automotive engineering.",
       level: "Intermediate",
       skills: ["Automotive Design", "Plastic Design", "CAD"],
       link: "https://mcadsolution.com/domain-courses/",
@@ -230,8 +225,7 @@ export const CERTIFICATES_BY_DOMAIN = {
     {
       name: "Robotics Simulation",
       organization: "MCAD Solutions",
-      description:
-        "Corporate-level training in robotic simulation with practical industry exposure and real-world applications.",
+      description: "Corporate-level training in robotic simulation with practical industry exposure and real-world applications.",
       level: "Advanced",
       skills: ["Robotics", "Simulation", "Automation"],
       link: "https://mcadsolution.com/domain-courses/",
@@ -239,8 +233,7 @@ export const CERTIFICATES_BY_DOMAIN = {
     {
       name: "Soft Skills",
       organization: "MCAD Solutions",
-      description:
-        "Develops interpersonal and communication skills essential for professional and personal growth.",
+      description: "Develops interpersonal and communication skills essential for professional and personal growth.",
       level: "Beginner",
       skills: ["Communication", "Teamwork", "Personality Development"],
       link: "https://mcadsolution.com/domain-courses/",
@@ -248,15 +241,97 @@ export const CERTIFICATES_BY_DOMAIN = {
     {
       name: "Personality Development",
       organization: "MCAD Solutions",
-      description:
-        "Enhances emotional intelligence, behavior, and overall personality for career success.",
+      description: "Enhances emotional intelligence, behavior, and overall personality for career success.",
       level: "Beginner",
       skills: ["Confidence", "Communication", "Emotional Intelligence"],
       link: "https://mcadsolution.com/domain-courses/",
     },
-  
+  ],
+  robotics: [
+    {
+      name: "Introduction to Robotics",
+      organization: "MCAD Solutions",
+      description: "Learn the fundamentals of robotics including robot kinematics, sensors, actuators, and control systems.",
+      level: "Beginner",
+      skills: ["Robotics", "Sensors", "Actuators", "Control Systems"],
+      link: "https://www.mcadsolution.com/robotics-simulation",
+    },
+    {
+      name: "Arduino & ESP32 for Robotics",
+      organization: "MCAD Solutions",
+      description: "Build robotics projects using Arduino and ESP32, covering sensors, motors, Wi-Fi, Bluetooth, and IoT integration.",
+      level: "Beginner",
+      skills: ["Arduino", "ESP32", "Embedded Systems", "IoT"],
+      link: "https://www.mcadsolution.com/robotics-simulation",
+    },
+    {
+      name: "Robot Operating System (ROS)",
+      organization: "MCAD Solutions",
+      description: "Learn ROS for robot programming, navigation, mapping, autonomous systems, and simulation using Gazebo.",
+      level: "Intermediate",
+      skills: ["ROS", "Gazebo", "Linux", "Robot Navigation"],
+      link: "https://www.mcadsolution.com/robotics-simulation",
+    },
+    {
+      name: "Computer Vision with OpenCV",
+      organization: "MCAD Solutions",
+      description: "Understand image processing, object detection, feature extraction, and real-time vision applications in robotics.",
+      level: "Intermediate",
+      skills: ["OpenCV", "Computer Vision", "Image Processing", "Python"],
+      link: "https://www.mcadsolution.com/robotics-simulation",
+    },
+    {
+      name: "YOLO Object Detection",
+      organization: "MCAD Solutions",
+      description: "Master YOLO for real-time object detection, tracking, and AI-powered robotics applications.",
+      level: "Intermediate",
+      skills: ["YOLO", "Object Detection", "Deep Learning", "Computer Vision"],
+      link: "https://www.mcadsolution.com/robotics-simulation",
+    },
+    {
+      name: "Embedded Systems Programming",
+      organization: "MCAD Solutions",
+      description: "Develop firmware for embedded systems using C/C++, microcontrollers, and real-time programming.",
+      level: "Intermediate",
+      skills: ["Embedded C", "Microcontrollers", "ESP32", "RTOS"],
+      link: "https://www.mcadsolution.com/robotics-simulation",
+    },
+    {
+      name: "Robotics Project Development",
+      organization: "MCAD Solutions",
+      description: "Develop end-to-end robotics projects integrating ESP32, ROS, YOLO, OpenCV, sensors, motors, and AI models.",
+      level: "Advanced",
+      skills: ["ESP32", "YOLO", "ROS", "OpenCV", "Embedded Systems", "IoT", "Computer Vision", "Automation", "Robotics"],
+      link: "https://www.mcadsolution.com/robotics-simulation",
+    },
   ],
 };
+
+const normalizeCertificateKey = (name, domain) =>
+  `${String(name || "").trim().toLowerCase()}::${String(domain || "").trim().toLowerCase()}`;
+
+async function removeDuplicateCertificates() {
+  const certificates = await Certificate.find({}, { _id: 1, name: 1, domain: 1, createdAt: 1 })
+    .sort({ createdAt: 1, _id: 1 })
+    .lean();
+
+  const seen = new Set();
+  const duplicateIds = [];
+
+  for (const cert of certificates) {
+    const key = normalizeCertificateKey(cert.name, cert.domain);
+    if (seen.has(key)) {
+      duplicateIds.push(cert._id);
+    } else {
+      seen.add(key);
+    }
+  }
+
+  if (duplicateIds.length > 0) {
+    await Certificate.deleteMany({ _id: { $in: duplicateIds } });
+    console.log(`[certificateDataService] Removed ${duplicateIds.length} duplicate certificate records`);
+  }
+}
 
 /**
  * Seed certificates to database
@@ -264,28 +339,37 @@ export const CERTIFICATES_BY_DOMAIN = {
  */
 export async function seedCertificates() {
   try {
-    let totalSeeded = 0;
+    await removeDuplicateCertificates();
+
+    const bulkOps = [];
 
     for (const [domain, certs] of Object.entries(CERTIFICATES_BY_DOMAIN)) {
       for (const cert of certs) {
-        await Certificate.findOneAndUpdate(
-          { name: cert.name },  // match by name
-          {
-            name: cert.name,
-            organization: cert.organization,
-            description: cert.description,
-            domain,
-            level: cert.level || "Beginner",
-            skills: cert.skills || [],
-            link: cert.link || "",
+        bulkOps.push({
+          updateOne: {
+            filter: { name: cert.name, domain },
+            update: {
+              $set: {
+                name: cert.name,
+                organization: cert.organization,
+                description: cert.description,
+                domain,
+                level: cert.level || "Beginner",
+                skills: cert.skills || [],
+                link: cert.link || "",
+              },
+            },
+            upsert: true,
           },
-          { upsert: true, new: true }
-        );
-        totalSeeded++;
+        });
       }
     }
 
-    console.log(`[certificateDataService] Synced ${totalSeeded} certificates to database`);
+    if (bulkOps.length > 0) {
+      await Certificate.bulkWrite(bulkOps, { ordered: false });
+    }
+
+    console.log(`[certificateDataService] Synced ${bulkOps.length} certificates to database`);
   } catch (err) {
     console.error("[certificateDataService] Error seeding certificates:", err.message);
   }
@@ -385,6 +469,24 @@ export function mapRoleToDomain(role = "") {
     "electrical engineer": "electrical",
     "electronics engineer": "electrical",
     "power systems engineer": "electrical",
+
+    // robotics 
+    "robotics engineer": "robotics",
+    "robotics developer": "robotics",
+    "robotics programmer": "robotics",
+    "embedded systems engineer": "robotics",
+    "embedded engineer": "robotics",
+    "mechatronics engineer": "robotics",
+    "control systems engineer": "robotics",
+    "autonomous systems engineer": "robotics",
+    "autonomous vehicle engineer": "robotics",
+    "computer vision engineer": "robotics",
+    "robotics simulation engineer": "robotics",
+    "ai robotics engineer": "robotics",
+    "drone engineer": "robotics",
+    "robotics technician": "robotics",
+    "automation technician": "robotics",
+    "iot robotics engineer": "robotics",
     // Management
     "project manager": "project-management",
     "product manager": "project-management",
@@ -412,6 +514,28 @@ export function mapRoleToDomain(role = "") {
   if (/embedded|firmware|iot/.test(normalized)) return "embedded";
   if (/project manager|product manager|scrum|agile/.test(normalized)) return "project-management";
   if (/ux|ui\/ux|design/.test(normalized)) return "uiux";
+  if (/security|cyber|pentest|penetration|soc|ethical hacking|vapt/.test(normalized))
+  return "cybersecurity";
+  if (
+  /robotics|robot|ros|gazebo|slam|autonomous|mechatronics|automation|control systems|computer vision|opencv|yolo|embedded robotics|drone|uav|robotics engineer/.test(normalized)
+)
+  return "robotics";
+  if (
+  /artificial intelligence|ai engineer|machine learning|ml engineer|deep learning|neural network|computer vision|nlp|data science|tensorflow|pytorch|scikit|llm/.test(normalized)
+)
+  return "ai";
+
+// Generative AI
+if (
+  /gen ai|generative ai|llm|large language model|gpt|langchain|llamaindex|rag|prompt engineering|vector database|embedding model|ai agent|agentic ai|openai|gemini|claude|mistral/.test(normalized)
+)
+  return "gen-ai";
+
+// Salesforce
+if (
+  /salesforce|apex|lightning|lwc|visualforce|crm|sales cloud|service cloud|commerce cloud|salesforce developer|salesforce administrator/.test(normalized)
+)
+  return "salesforce";
 
   return "fullstack"; // final default
 }

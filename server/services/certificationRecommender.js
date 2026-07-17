@@ -1,5 +1,5 @@
 import { ENABLE_AI } from "../config/env.js";
-import { model } from "../config/gemini.js";
+import { generateGeminiContent } from "../config/gemini.js";
 import Certificate from "../models/Certificate.js";
 import {
   getRecommendedCertificatesForRole,
@@ -69,6 +69,11 @@ const baseCerts = {
     "Google Machine Learning Crash Course",
     "TensorFlow Developer",
     "AWS ML Specialty",
+  ],
+  robotics: [
+    "Introduction to Robotics",
+    "Arduino & ESP32 for Robotics",
+    "Robot Operating System (ROS)",
   ],
 };
 
@@ -157,6 +162,24 @@ const certDetails = {
     skills: ["TensorFlow", "Deep Learning"],
     description:
       "Validates hands-on TensorFlow skills for implementing deep learning models.",
+  },
+  "Introduction to Robotics": {
+    organization: "MCAD Solutions",
+    skills: ["Robotics", "Sensors", "Control Systems"],
+    description:
+      "Learn the fundamentals of robotics including robot kinematics, sensors, actuators, and control systems.",
+  },
+  "Arduino & ESP32 for Robotics": {
+    organization: "MCAD Solutions",
+    skills: ["Arduino", "ESP32", "IoT"],
+    description:
+      "Build robotics projects using Arduino and ESP32, covering sensors, motors, Wi-Fi, Bluetooth, and IoT integration.",
+  },
+  "Robot Operating System (ROS)": {
+    organization: "MCAD Solutions",
+    skills: ["ROS", "Gazebo", "Linux"],
+    description:
+      "Learn ROS for robot programming, navigation, mapping, autonomous systems, and simulation using Gazebo.",
   },
 };
 
@@ -247,12 +270,16 @@ export async function recommendCertificationsWithDB({
   const domain = mapRoleToDomain(role);
 
   // ── Mechanical domain → always use DB (MCAD courses), never AI ──
-  if (domain === "mechanical") {
-    console.log("[recommendCertifications] Mechanical role – fetching MCAD certs from DB");
-    certResults = await getDBCerts(role, skills, experienceLevel,);
-    source = "db";
+  const dbOnlyDomains = ["mechanical", "robotics"];
 
-  } else if (ENABLE_AI !== true || useAI === false) {
+if (dbOnlyDomains.includes(domain)) {
+  console.log(
+    `[recommendCertifications] ${domain} role – fetching courses from DB`
+  );
+
+  certResults = await getDBCerts(role, skills, experienceLevel);
+  source = "db";
+} else if (ENABLE_AI !== true || useAI === false) {
     // ── AI disabled → fetch from DB ──
     console.log("[recommendCertifications] AI disabled – fetching certs from DB");
     certResults = await getDBCerts(role, skills, experienceLevel);
@@ -289,7 +316,7 @@ Output format (strict):
 `;
 
     try {
-      const result = await model.generateContent(prompt);
+      const result = await generateGeminiContent(prompt);
       const raw = await result.response.text();
       const parsed = safeParseArray(raw);
 

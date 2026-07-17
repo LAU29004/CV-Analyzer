@@ -553,6 +553,10 @@ export function OptimisedResumePage() {
                             View Certificate →
                           </a>
                         )}
+                        <p className="mt-3 text-[11px] text-muted-foreground italic">
+                          These recommendations are for guidance purposes only and should be used as part of your career planning. Individual results and opportunities may vary.
+                        </p>
+
                       </div>
                     </div>
                   </motion.div>

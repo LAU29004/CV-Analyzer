@@ -1,6 +1,5 @@
 import { ENABLE_AI } from "../config/env.js";
-import { model } from "../config/gemini.js";
-import { retry } from "./retry.js";
+import { generateGeminiContent } from "../config/gemini.js";
 
 /**
  * AI SUMMARY GENERATOR
@@ -53,7 +52,7 @@ FORMAT:
 console.log("🤖 [AI] ENABLE_AI:", ENABLE_AI);
 console.log("🤖 [AI] Calling Gemini with prompt:");
 console.log(prompt);
-    const res = await retry(() => model.generateContent(prompt));
+    const res = await generateGeminiContent(prompt);
     console.log("🤖 [AI] Gemini response received");
 const raw = (await res.response.text())
   .replace(/```json|```/g, "")

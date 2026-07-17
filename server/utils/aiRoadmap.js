@@ -1,4 +1,4 @@
-import { model } from '../config/gemini.js';
+import { generateGeminiContent } from '../config/gemini.js';
 
 export async function generateRoadmapAI({
   skills,
@@ -61,7 +61,7 @@ Return ONLY the JSON object, no additional text.
 `;
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await generateGeminiContent(prompt);
     const raw = typeof result.response.text === 'function' 
       ? await result.response.text() 
       : String(result.response || '');

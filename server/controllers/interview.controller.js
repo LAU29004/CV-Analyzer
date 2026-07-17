@@ -1,5 +1,5 @@
 // interview.controller.js
-import { model } from "../config/gemini.js";
+import { generateGeminiContent } from "../config/gemini.js";
 import { buildInterviewPrompt } from "../services/prompt.service.js";
 
 export const generateInterview = async (req, res) => {
@@ -20,7 +20,7 @@ export const generateInterview = async (req, res) => {
       questionTypes: questionTypes || ["technical", "behavioral"],
     });
 
-    const result = await model.generateContent(prompt);
+    const result = await generateGeminiContent(prompt);
     const response = await result.response;
     let raw = response.text();
 

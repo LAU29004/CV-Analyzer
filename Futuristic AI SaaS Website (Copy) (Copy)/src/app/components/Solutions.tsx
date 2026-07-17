@@ -85,10 +85,10 @@ export function Solutions() {
                   <h3 className="text-xl mb-3 group-hover:text-white transition-colors duration-300">{solution.title}</h3>
                   <p className="text-muted-foreground mb-4 group-hover:text-gray-300 transition-colors duration-300">{solution.description}</p>
                   
-                  <div className="flex items-center text-violet-400 text-sm hover:gap-2 transition-all cursor-pointer group/link">
+                  {/* <div className="flex items-center text-violet-400 text-sm hover:gap-2 transition-all cursor-pointer group/link">
                     Learn more
                     <ArrowRight className="w-4 h-4 ml-1 group-hover/link:translate-x-1 transition-transform" />
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Arrow between steps (desktop only) */}

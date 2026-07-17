@@ -15,6 +15,7 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
+      index: true,
       sparse: true,
       lowercase: true,
       trim: true,
@@ -22,6 +23,7 @@ const userSchema = new mongoose.Schema(
     },
     phoneNumber: {
       type: String,
+      index: true,
       sparse: true,
       trim: true,
       // ✅ REMOVED: No inline index definition
@@ -58,10 +60,6 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// ✅ Define all indexes here (NOT in the field definitions above)
-userSchema.index({ firebaseUid: 1 }, { unique: true });
-userSchema.index({ email: 1 }, { unique: true, sparse: true });
-userSchema.index({ phoneNumber: 1 }, { sparse: true });
 userSchema.index({ role: 1 });
 userSchema.index({ createdAt: -1 });
 

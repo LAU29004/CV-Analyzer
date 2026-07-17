@@ -2,8 +2,7 @@ import { createRequire } from "module";
 import mammoth from "mammoth";
 import { ENABLE_AI } from "../config/env.js";
 import { safeAI } from "../utils/safeAI.js";
-import { retry } from "../utils/retry.js";
-import { model } from "../config/gemini.js";
+import { generateGeminiContent } from "../config/gemini.js";
 import { recommendCertifications } from "../services/certificationRecommender.js";
 import { generateCertificateAI } from "../services/generateCertificateAI.js";
 
@@ -56,20 +55,12 @@ const textIncludes = (text, patterns = []) =>
   patterns.some((p) => new RegExp(p, "i").test(text));
 
 /* ================= ROLE + EXPERIENCE INFERENCE ================= */
-/**
- * Rich role detection covering engineering, ML/AI, data, cloud/devops,
- * security, mobile, web, management, and design roles.
- * Sourced from Document 1 (more comprehensive than Document 2).
- */
 const inferRoleAndExperience = (resume, rawText) => {
   let role = "Full Stack Developer";
   let experienceLevel = "fresher";
 
   const text = rawText.toLowerCase();
 
-  // ── Role detection: most-specific first ──────────────────────────────────
-
-  // Engineering (non-IT) — check before generic IT terms
   if (textIncludes(text, ["mechanical engineer", "hvac", "solidworks", "autocad mechanical", "catia", "ansys", "manufacturing", "automotive engineer"])) {
     role = "Mechanical Engineer";
   } else if (textIncludes(text, ["civil engineer", "structural engineer", "geotechnical", "surveying", "autocad civil", "staad", "etabs", "revit"])) {
@@ -77,31 +68,25 @@ const inferRoleAndExperience = (resume, rawText) => {
   } else if (textIncludes(text, ["electrical engineer", "electronics engineer", "power systems", "plc", "scada", "circuit design", "embedded", "vhdl", "fpga"])) {
     role = "Electrical Engineer";
   }
-  // ML / AI — before generic data/backend
   else if (textIncludes(text, ["machine learning", "deep learning", "nlp", "computer vision", "tensorflow", "pytorch", "keras"])) {
     role = "Machine Learning Engineer";
   }
-  // Data
   else if (textIncludes(text, ["data scientist", "data science"])) {
     role = "Data Scientist";
   } else if (textIncludes(text, ["data analyst", "power bi", "tableau", "business analyst", "business intelligence"])) {
     role = "Data Analyst";
   }
-  // Cloud / DevOps
   else if (textIncludes(text, ["devops", "site reliability", "sre", "jenkins", "kubernetes", "terraform", "ansible"])) {
     role = "DevOps Engineer";
   } else if (textIncludes(text, ["cloud architect", "aws architect", "cloud engineer", "azure engineer", "gcp engineer"])) {
     role = "Cloud Engineer";
   }
-  // Security
   else if (textIncludes(text, ["cybersecurity", "security analyst", "penetration test", "ethical hacking", "soc analyst", "information security"])) {
     role = "Cybersecurity Engineer";
   }
-  // Mobile
   else if (textIncludes(text, ["android developer", "ios developer", "flutter", "react native", "mobile developer", "swift", "kotlin"])) {
     role = "Mobile Developer";
   }
-  // Web / Software
   else if (textIncludes(text, ["frontend", "front-end", "react developer", "angular", "vue", "ui developer"])) {
     role = "Frontend Developer";
   } else if (textIncludes(text, ["backend", "back-end", "node.js", "django", "spring boot", "rest api", "graphql"])) {
@@ -109,16 +94,13 @@ const inferRoleAndExperience = (resume, rawText) => {
   } else if (textIncludes(text, ["full stack", "fullstack", "mern", "mean", "lamp stack"])) {
     role = "Full Stack Developer";
   }
-  // Management
   else if (textIncludes(text, ["project manager", "scrum master", "agile", "product manager", "program manager"])) {
     role = "Project Manager";
   }
-  // UI/UX
   else if (textIncludes(text, ["ux designer", "ui designer", "ui/ux", "figma", "sketch", "product design"])) {
     role = "UI/UX Designer";
   }
 
-  // ── Experience level detection ────────────────────────────────────────────
   if (
     textIncludes(text, [
       "senior", "lead ", "principal", "architect",
@@ -141,51 +123,32 @@ const inferRoleAndExperience = (resume, rawText) => {
 };
 
 /* ================= SKILL EXTRACTOR FROM RAW TEXT ================= */
-/**
- * Scans raw resume text for recognisable skill keywords across ALL domains.
- * Used in both AI-on and AI-off paths to ensure extracted skills are sent
- * to the cert recommender so skill-overlap DB queries can fire.
- * Sourced from Document 1.
- */
 const ALL_SKILL_KEYWORDS = [
-  // Web / Frontend
   "React", "Angular", "Vue", "HTML", "CSS", "JavaScript", "TypeScript",
   "Redux", "Next.js", "Nuxt", "Tailwind", "Bootstrap", "Sass",
-  // Backend
   "Node.js", "Express", "Django", "Flask", "FastAPI", "Spring Boot",
   "Laravel", "Ruby on Rails", "GraphQL", "REST API",
-  // Languages
   "Python", "Java", "C\\+\\+", "C#", "Go", "Ruby", "PHP", "Kotlin", "Swift",
   "Rust", "Scala", "R", "MATLAB", "Bash",
-  // Databases
   "SQL", "MongoDB", "PostgreSQL", "MySQL", "SQLite", "Redis", "Firebase",
   "Cassandra", "DynamoDB", "Oracle",
-  // Cloud / DevOps
   "AWS", "GCP", "Azure", "Docker", "Kubernetes", "Terraform", "Ansible",
   "Jenkins", "CI/CD", "Git", "GitHub Actions", "Linux",
-  // Data / AI
   "TensorFlow", "PyTorch", "Keras", "Scikit-learn", "Machine Learning",
   "Deep Learning", "NLP", "Computer Vision", "Pandas", "NumPy",
   "Power BI", "Tableau", "Excel", "Spark", "Hadoop",
-  // Mobile
   "Flutter", "React Native", "Android", "iOS", "Swift", "Kotlin",
-  // Security
   "Cybersecurity", "Ethical Hacking", "Penetration Testing", "SIEM",
   "Wireshark", "Metasploit", "Nmap", "OWASP",
-  // Mechanical Engineering
   "AutoCAD", "SolidWorks", "CATIA", "ANSYS", "MATLAB", "Fusion 360",
   "Creo", "NX", "HyperMesh", "Inventor", "HVAC", "CFD", "FEA",
   "GD&T", "CNC", "CAM", "PLM",
-  // Civil Engineering
   "AutoCAD Civil 3D", "STAAD Pro", "ETABS", "SAP2000", "Revit",
   "Primavera", "MS Project", "Surveying", "GIS", "ArcGIS",
-  // Electrical Engineering
   "PLC", "SCADA", "VHDL", "Verilog", "FPGA", "LabVIEW", "MATLAB Simulink",
   "Proteus", "Multisim", "Eagle", "PCB Design", "Circuit Design", "Embedded C",
-  // Project Management
   "Agile", "Scrum", "Kanban", "JIRA", "Confluence", "MS Project",
   "PMP", "Six Sigma", "Lean",
-  // Design
   "Figma", "Adobe XD", "Sketch", "Photoshop", "Illustrator", "InDesign",
   "UI/UX", "Wireframing", "Prototyping",
 ];
@@ -197,17 +160,11 @@ const extractSkillsFromText = (text = "") =>
 
 /* ================= ATS SCORE ================= */
 
-/*
- * Category maximums — always sum to exactly 100:
- *   contact(15) + sections(20) + keywords(30) + experience(20)
- *   + readability(10) + formatting(5) = 100
- * Sourced from Document 2 (superior scoring system).
- */
 const BREAKDOWN_MAXES = {
-  contact:     15,
-  sections:    20,
-  keywords:    30,
-  experience:  20,
+  contact:     5,
+  sections:    5,
+  keywords:    20,
+  experience:  15,
   readability: 10,
   formatting:   5,
 };
@@ -252,13 +209,6 @@ const ACTION_VERBS = [
   "engineered", "streamlined", "spearheaded", "coordinated",
 ];
 
-/**
- * Extracts a rich text blob from the resume OBJECT only.
- * Contact header fields are EXCLUDED to prevent phone numbers or email
- * addresses accidentally matching keyword/action-verb patterns.
- * Project description is explicitly included.
- * Sourced from Document 2.
- */
 const buildStructuredText = (resume) => {
   const parts = [
     resume.summary || "",
@@ -291,12 +241,6 @@ const buildStructuredText = (resume) => {
 };
 
 const calculateATSScore = (resume, _rawText = "") => {
-  /*
-   * structuredText: built from the resume object — used for ALL content scoring.
-   * _rawText: original uploaded PDF text — used ONLY as fallback for email/phone
-   *           detection on the analyzeResume path where header parsing may be
-   *           incomplete. Never used for keyword or section scoring.
-   */
   const structuredText = buildStructuredText(resume);
 
   const breakdown = {
@@ -312,11 +256,7 @@ const calculateATSScore = (resume, _rawText = "") => {
   const suggestions = [];
 
   /* ================================================================
-     1. CONTACT INFO  (max 15 pts)
-        email(5) + phone(4) + linkedin(3) + github(2) + location(1) = 15
-
-        LinkedIn and GitHub are ONLY credited from the header object.
-        A GitHub URL inside a project bullet MUST NOT score here.
+     1. CONTACT INFO  (max 15 pts) — email5 + phone4 + linkedin3 + github2 + location1
      ================================================================ */
   const hasEmail =
     !!(resume.header?.email?.trim()) ||
@@ -337,9 +277,11 @@ const calculateATSScore = (resume, _rawText = "") => {
   if (hasLocation) breakdown.contact += 1; else suggestions.push("Add your city or location");
 
   /* ================================================================
-     2. SECTIONS COVERAGE  (max 20 pts)
-        summary(5) + skills(5) + experience(4) + education(4)
-        + projects(2) = 20  (certs add 1 bonus, capped at 20)
+     2. SECTIONS COVERAGE (max 20 pts)
+        summary5 + skills4 + experience4 + education4 + projects2 + certs1 = 20
+        NOTE: these six weights are chosen to sum EXACTLY to the category
+        max, so this category can never exceed 20 even before clamping —
+        no "bonus" points that rely on the final clamp to stay in range.
      ================================================================ */
   const hasSummary    = !!(resume.summary?.trim()?.length > 20);
   const hasSkills     = (resume.skills?.technical?.length || 0) > 0 ||
@@ -350,23 +292,25 @@ const calculateATSScore = (resume, _rawText = "") => {
   const hasCerts      = (resume.certifications_awards?.length || 0) > 0;
 
   if (hasSummary)    breakdown.sections += 5; else missing.push("Professional summary / objective");
-  if (hasSkills)     breakdown.sections += 5; else missing.push("Skills section");
+  if (hasSkills)     breakdown.sections += 4; else missing.push("Skills section");
   if (hasExperience) breakdown.sections += 4; else suggestions.push("Add work or internship experience");
   if (hasEducation)  breakdown.sections += 4; else missing.push("Education section");
   if (hasProjects)   breakdown.sections += 2; else suggestions.push("Add portfolio projects with GitHub links");
-  if (hasCerts)      breakdown.sections += 1; // bonus, capped at max below
+  if (hasCerts)      breakdown.sections += 1; else suggestions.push("Add relevant certifications");
 
   /* ================================================================
-     3. KEYWORDS  (max 30 pts)
-        Reads from resume.skills arrays first, then scans structuredText.
+     3. KEYWORDS (max 30 pts) — continuous scoring, not step buckets.
+        Two resumes with different keyword coverage now get
+        meaningfully different scores instead of being lumped into
+        the same tier.
      ================================================================ */
   const { role: inferredRole } = inferRoleAndExperience(resume, structuredText);
 
   let roleBank = ROLE_KEYWORD_BANKS.fullstack;
-  if (/frontend/i.test(inferredRole))              roleBank = ROLE_KEYWORD_BANKS.frontend;
-  else if (/backend/i.test(inferredRole))          roleBank = ROLE_KEYWORD_BANKS.backend;
-  else if (/data analyst/i.test(inferredRole))     roleBank = ROLE_KEYWORD_BANKS.data;
-  else if (/machine learning/i.test(inferredRole)) roleBank = ROLE_KEYWORD_BANKS.ml;
+  if (/frontend/i.test(inferredRole))                                   roleBank = ROLE_KEYWORD_BANKS.frontend;
+  else if (/backend/i.test(inferredRole))                               roleBank = ROLE_KEYWORD_BANKS.backend;
+  else if (/data analyst|data scientist/i.test(inferredRole))           roleBank = ROLE_KEYWORD_BANKS.data;
+  else if (/machine learning/i.test(inferredRole))                      roleBank = ROLE_KEYWORD_BANKS.ml;
 
   const listedSkills = [
     ...(resume.skills?.technical || []),
@@ -376,28 +320,33 @@ const calculateATSScore = (resume, _rawText = "") => {
   const matchKw = (kw) => {
     const kwLower = kw.toLowerCase();
     if (listedSkills.some((s) => s === kwLower || s.includes(kwLower))) return true;
-    return new RegExp(`\\b${kwLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(structuredText);
+    const escaped = kwLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(?:^|[^a-z0-9])${escaped}(?:$|[^a-z0-9])`, "i").test(` ${structuredText} `);
   };
 
   const roleKeywordMatches    = roleBank.filter(matchKw).length;
   const generalKeywordMatches = GENERAL_KEYWORDS.filter(matchKw).length;
 
-  const roleRatio    = roleKeywordMatches / roleBank.length;
-  const generalRatio = generalKeywordMatches / GENERAL_KEYWORDS.length;
-  const combinedScore = (roleRatio * 0.7 + generalRatio * 0.3) * 100;
+  const roleRatio    = roleBank.length ? roleKeywordMatches / roleBank.length : 0;
+  const generalRatio = GENERAL_KEYWORDS.length ? generalKeywordMatches / GENERAL_KEYWORDS.length : 0;
 
-  if      (combinedScore >= 70) breakdown.keywords = 30;
-  else if (combinedScore >= 55) breakdown.keywords = 24;
-  else if (combinedScore >= 40) breakdown.keywords = 18;
-  else if (combinedScore >= 25) breakdown.keywords = 12;
-  else if (combinedScore >= 10) breakdown.keywords = 6;
-  else {
-    breakdown.keywords = 2;
+  // Weighted 0-1 coverage score (role-specific terms count more than general ones)
+  const combinedRatio = roleRatio * 0.7 + generalRatio * 0.3; // 0..1
+
+  // Smooth continuous curve: sqrt() rewards early keyword coverage more
+  // than the tail end (matches real ATS behaviour — first few relevant
+  // keywords matter a lot more than the 20th), while still reaching the
+  // full 30 points only with strong, broad coverage.
+  breakdown.keywords = Math.round(Math.sqrt(combinedRatio) * BREAKDOWN_MAXES.keywords);
+
+  if (combinedRatio < 0.25) {
     suggestions.push("Add more role-specific technologies and tools to your skills section");
+  } else if (combinedRatio < 0.55) {
+    suggestions.push("Broaden your keyword coverage — include more tools and technologies relevant to the role");
   }
 
   /* ================================================================
-     4. EXPERIENCE DEPTH  (max 20 pts)
+     4. EXPERIENCE DEPTH (max 20 pts)
         roles(10) + action verbs in bullets(5) + quantified results(5)
      ================================================================ */
   const expCount = resume.experience?.length || 0;
@@ -423,7 +372,8 @@ const calculateATSScore = (resume, _rawText = "") => {
   else if (expActionVerbs >= 1) breakdown.experience += 1;
   else if (expCount > 0) suggestions.push("Use strong action verbs in experience bullets (built, optimized, led)");
 
-  const expQuantified = (expText.match(/\b\d+\s*[%+x]|\$[\d,.]+[km]?|\d+\s*(ms|seconds?|hrs?|hours?|users?|requests?)\b/gi) || []).length;
+  const QUANT_RE = /\b\d+\s*[%+x]|\$[\d,.]+[km]?|\d+\s*(ms|seconds?|hrs?|hours?|users?|requests?|k)\b/gi;
+  const expQuantified = (expText.match(QUANT_RE) || []).length;
 
   if      (expQuantified >= 4) breakdown.experience += 5;
   else if (expQuantified >= 2) breakdown.experience += 3;
@@ -431,13 +381,14 @@ const calculateATSScore = (resume, _rawText = "") => {
   else if (expCount > 0) suggestions.push("Quantify achievements with numbers (e.g. 40% faster, 10k users)");
 
   /* ================================================================
-     5. READABILITY  (max 10 pts)
+     5. READABILITY (max 10 pts)
         word count(4) + action verbs full resume(4) + quantified(2)
      ================================================================ */
   const wordCount = structuredText.trim().split(/\s+/).filter(Boolean).length;
 
   if      (wordCount >= 350) breakdown.readability += 4;
   else if (wordCount >= 200) breakdown.readability += 2;
+  else if (wordCount >= 100) breakdown.readability += 1;
   else suggestions.push("Expand your resume content — aim for 350+ words across all sections");
 
   const totalActionVerbs = ACTION_VERBS.filter((v) =>
@@ -449,15 +400,14 @@ const calculateATSScore = (resume, _rawText = "") => {
   else if (totalActionVerbs >= 1) breakdown.readability += 1;
   else suggestions.push("Use strong action verbs throughout your resume");
 
-  const totalQuantified = (structuredText.match(/\b\d+\s*[%+x]|\$[\d,.]+[km]?|\d+\s*(ms|seconds?|hrs?|hours?|users?|requests?)\b/gi) || []).length;
+  const totalQuantified = (structuredText.match(QUANT_RE) || []).length;
 
   if      (totalQuantified >= 5) breakdown.readability += 2;
   else if (totalQuantified >= 2) breakdown.readability += 1;
   else suggestions.push("Add measurable results (e.g. 'reduced load time by 40%', 'served 10k users')");
 
   /* ================================================================
-     6. FORMATTING  (max 5 pts)
-        name(2) + section completeness(3)
+     6. FORMATTING (max 5 pts) — name(2) + section completeness(3)
      ================================================================ */
   const hasName = !!(resume.header?.name?.trim()?.length > 0);
   if (hasName) breakdown.formatting += 2; else missing.push("Candidate name");
@@ -468,10 +418,15 @@ const calculateATSScore = (resume, _rawText = "") => {
   else if (filledSectionCount >= 3) breakdown.formatting += 1;
 
   /* ================================================================
-     TOTALS — cap every category at its max BEFORE summing
+     TOTALS
+     Every category is now structurally bounded by its own max (see
+     comments above), but we still clamp defensively here — this is a
+     safety net, not the primary guarantee, so a future edit to any
+     single category above cannot silently push totals or percentages
+     past 100% again.
      ================================================================ */
   for (const key of Object.keys(breakdown)) {
-    breakdown[key] = Math.min(Math.max(breakdown[key], 0), BREAKDOWN_MAXES[key]);
+    breakdown[key] = Math.min(Math.max(Math.round(breakdown[key]), 0), BREAKDOWN_MAXES[key]);
   }
 
   const total   = Object.values(breakdown).reduce((a, b) => a + b, 0);
@@ -484,7 +439,10 @@ const calculateATSScore = (resume, _rawText = "") => {
 
   const breakdownPercent = {};
   for (const key of Object.keys(breakdown)) {
-    breakdownPercent[key] = Math.round((breakdown[key] / BREAKDOWN_MAXES[key]) * 100);
+    const pct = (breakdown[key] / BREAKDOWN_MAXES[key]) * 100;
+    // Hard clamp 0-100 regardless of any upstream rounding/math — this
+    // is the guarantee the UI progress bars can rely on.
+    breakdownPercent[key] = Math.min(100, Math.max(0, Math.round(pct)));
   }
 
   return {
@@ -502,12 +460,12 @@ const calculateATSScore = (resume, _rawText = "") => {
       totalActionVerbs,
       totalQuantified,
       filledSectionCount,
+      keywordCoverageRatio: Math.round(combinedRatio * 100) / 100,
     },
   };
 };
 
 /* ================= HARDCODED PROJECT FALLBACKS ================= */
-// Merged from both documents — Document 2 adds "description" field to each project.
 const PROJECT_FALLBACKS = {
   "frontend developer": [
     {
@@ -617,7 +575,6 @@ const getProjectFallback = (role) => {
 };
 
 /* ================= HARDCODED SUMMARY FALLBACKS ================= */
-// Sourced from Document 2 — not present in Document 1.
 const SUMMARY_FALLBACKS = {
   "frontend developer": [
     "Creative and detail-oriented Frontend Developer skilled in building responsive, accessible web applications using React and modern CSS. Passionate about crafting pixel-perfect UIs and optimising user experience across devices.",
@@ -657,11 +614,6 @@ const getSummaryFallback = (role) => {
 };
 
 /* ================= AI PROJECT SUGGESTIONS ================= */
-/**
- * Generates 2–3 project suggestions via Gemini when AI is enabled.
- * Falls back to hardcoded suggestions on any failure.
- * Includes "description" field in both AI prompt and fallbacks.
- */
 const generateProjectSuggestions = async ({ role, skills = [], experienceLevel = "fresher" }) => {
   if (ENABLE_AI !== true) {
     logAI("AI disabled – returning hardcoded project suggestions");
@@ -697,7 +649,7 @@ Output format (strict):
 `;
 
   try {
-    const result = await retry(() => model.generateContent(prompt));
+    const result = await generateGeminiContent(prompt);
     const raw = await result.response.text();
     const parsed = safeParseArray(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("Empty array");
@@ -716,7 +668,6 @@ export const analyzeResume = async (req, res) => {
       return res.status(400).json({ error: "No resume uploaded" });
     }
 
-    /* ---------- TEXT EXTRACTION ---------- */
     let resumeText = "";
 
     if (req.file.mimetype === "application/pdf") {
@@ -733,7 +684,6 @@ export const analyzeResume = async (req, res) => {
       return res.status(400).json({ error: "Empty resume text" });
     }
 
-    /* ---------- BASE STRUCTURE ---------- */
     const baseOptimizedResume = {
       header: {},
       summary: "",
@@ -747,12 +697,10 @@ export const analyzeResume = async (req, res) => {
     const aiAllowed = ENABLE_AI === true;
     logAI("AI enabled", { aiAllowed });
 
-    /* ---------- Infer role/skills from raw text (used in both paths) ---------- */
     const { role: inferredRole, experienceLevel: inferredLevel } =
       inferRoleAndExperience(baseOptimizedResume, resumeText);
     const detectedSkills = extractSkillsFromText(resumeText);
 
-    /* ---------- Non-AI fallback ---------- */
     const buildFallback = async () => {
       const rawCerts = await generateCertificateAI({
         role: inferredRole,
@@ -819,7 +767,7 @@ ${resumeText}
 >>>
 `;
 
-            const result = await retry(() => model.generateContent(prompt));
+            const result = await generateGeminiContent(prompt);
             const raw = await result.response.text();
             let parsed;
 
@@ -841,7 +789,6 @@ ${resumeText}
             const atsScore = calculateATSScore(mergedResume, resumeText);
             const { role, experienceLevel } = inferRoleAndExperience(mergedResume, resumeText);
 
-            // Use AI-parsed skills; fall back to text-extracted skills if empty
             const aiSkills =
               mergedResume.skills.technical.length > 0
                 ? mergedResume.skills.technical
@@ -885,11 +832,6 @@ ${resumeText}
 };
 
 /* ================= CREATE RESUME CONTROLLER ================= */
-/**
- * Called by POST /api/public/create-resume
- * Receives structured form data, generates resume + project suggestions + certs.
- * Returns summaryOptions (3 choices) in addition to optimizedResume.
- */
 export const createResume = async (req, res) => {
   try {
     const {
@@ -917,7 +859,6 @@ export const createResume = async (req, res) => {
     const aiAllowed = ENABLE_AI === true;
     logAI("Beginner flow – AI enabled", { aiAllowed });
 
-    /* ---------- Build base optimizedResume from form data ---------- */
     const baseOptimizedResume = {
       header: {
         name: full_name,
@@ -938,7 +879,6 @@ export const createResume = async (req, res) => {
       certifications_awards: certifications,
     };
 
-    /* ---------- Infer role context for suggestions ---------- */
     const normalizedRole = role.toLowerCase();
     let inferredRole = "Full Stack Developer";
     if (/frontend|react|ui|ux/.test(normalizedRole))                      inferredRole = "Frontend Developer";
@@ -951,7 +891,6 @@ export const createResume = async (req, res) => {
 
     let optimizedResume = { ...baseOptimizedResume };
 
-    /* ---------- Summary Options (3 AI or 3 hardcoded) ---------- */
     const inferredKey = inferredRole.toLowerCase();
     let summaryOptions = SUMMARY_FALLBACKS[inferredKey] || SUMMARY_FALLBACKS["default"];
 
@@ -970,7 +909,7 @@ Output ONLY a valid JSON array of exactly 3 strings, no markdown, no labels, no 
 Example format:
 ["Summary option 1 text.", "Summary option 2 text.", "Summary option 3 text."]
 `;
-        const summaryResult = await retry(() => model.generateContent(summaryPrompt));
+        const summaryResult = await generateGeminiContent(summaryPrompt);
         const raw = (await summaryResult.response.text()).trim();
         const parsed = safeParseArray(raw);
         if (Array.isArray(parsed) && parsed.length >= 3) {
@@ -984,21 +923,16 @@ Example format:
       }
     }
 
-    // Use first summary option as the default in optimizedResume
     optimizedResume.summary = summaryOptions[0];
 
-    /* ---------- ATS Score ---------- */
-    // Pass empty string as _rawText — all data is already in the resume object
     const atsScore = calculateATSScore(optimizedResume, "");
 
-    /* ---------- Project Suggestions (AI or fallback) ---------- */
     const projectSuggestions = await generateProjectSuggestions({
       role: inferredRole,
       skills: optimizedResume.skills.technical,
       experienceLevel,
     });
 
-    /* ---------- Certification Recommendations (AI or fallback) ---------- */
     const rawCerts = await generateCertificateAI({
       role: inferredRole,
       skills: optimizedResume.skills.technical,

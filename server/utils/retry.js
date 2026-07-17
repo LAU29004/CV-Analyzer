@@ -6,7 +6,7 @@ export const retry = async (fn, retries = 2, delay = 3000) => {
       const status =
         error?.status ||
         error?.response?.status ||
-        error?.errorDetails?.[2]?.retryDelay;
+        error?.errorDetails?.[2]?.status;
 
       // Handle Gemini rate limit (429)
       if (error?.status === 429) {
