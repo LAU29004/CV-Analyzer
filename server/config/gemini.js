@@ -9,7 +9,6 @@ if (!process.env.GEMINI_API_KEY) {
   process.exit(1);
 }
 
-console.log("✅ Gemini API Key loaded");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 

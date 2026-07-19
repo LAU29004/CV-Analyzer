@@ -58,7 +58,6 @@ export function Roadmap({ onGenerateClick }: RoadmapProps) {
         onGenerateClick();
         // debug
         // eslint-disable-next-line no-console
-        console.log('Roadmap: onGenerateClick invoked');
         // Also navigate to the dedicated generator route so the user sees the generator
         navigate('/roadmap/generate');
       } catch (e) {

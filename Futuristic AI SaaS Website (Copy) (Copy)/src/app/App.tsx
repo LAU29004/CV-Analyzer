@@ -339,7 +339,7 @@ export default function App() {
                     <Features />
 
                     <Stats />
-                    <CTA />
+                    {/* <CTA /> */}
                   </>
                 }
               />

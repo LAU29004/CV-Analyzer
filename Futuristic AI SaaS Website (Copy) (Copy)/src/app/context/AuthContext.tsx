@@ -108,11 +108,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             name: resolvedName,
             displayName: resolvedName,
           });
-          console.log("✅ Backend sync successful:", data.user.email);
           // Clear the pending phone once successfully saved
           if (pendingPhone) {
             localStorage.removeItem(`pending_phone_${fbUser.uid}`);
-            console.log("📱 Pending phone saved and cleared from localStorage");
+
           }
         }
       } else {

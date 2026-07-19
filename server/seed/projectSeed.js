@@ -6,8 +6,6 @@ dotenv.config();
 
 await mongoose.connect(process.env.MONGO_URI);
 
-console.log("MongoDB connected");
-
 // insert project
 await Project.create({
   title: "Smart Energy Meter",
@@ -20,7 +18,5 @@ await Project.create({
     "Enable remote data access"
   ]
 });
-
-console.log("Project inserted");
 
 await mongoose.disconnect();

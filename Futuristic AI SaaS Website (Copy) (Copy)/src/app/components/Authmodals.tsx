@@ -217,13 +217,11 @@ export function AuthModals() {
       //    the user verifies their email and logs in (DB user created then)
       if (phoneNumber.trim()) {
         localStorage.setItem(`pending_phone_${user.uid}`, phoneNumber.trim());
-        console.log("📱 Phone number stored for sync:", phoneNumber.trim());
       }
 
       setLoading(false);
       setSignupSuccess(true);
     } catch (error: any) {
-      console.error("Signup Error:", error);
       if (error.code === "auth/email-already-in-use") {
         setError("Email is already registered. Please login.");
       } else {

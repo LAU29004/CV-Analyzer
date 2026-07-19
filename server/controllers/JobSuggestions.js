@@ -205,15 +205,12 @@ export const generateJobSuggestions = async (req, res) => {
 
         const cachedRedis = await redisClient.get(redisKey);
 if (cachedRedis) {
-    console.log("Returning from Redis");
     return res.json(JSON.parse(cachedRedis));
 }
 
         // ── 1. Check cache ──────────────────────────────────────────
         const cached = await JobCache.findOne({ query: cacheKey });
 if (cached) {
-    console.log("Mongo Cache HIT");
-
     await redisClient.setEx(
         redisKey,
         21600,
@@ -247,7 +244,6 @@ await redisClient.setEx(
                 // Delete stale entry first (in case previous run cached bad data)
                 await JobCache.deleteOne({ query: cacheKey });
                 await JobCache.create({ query: cacheKey, jobs: final });
-                console.log(`[JobSuggestions] Cached ${final.length} jobs for "${cacheKey}"`);
             } catch (cacheErr) {
                 if (cacheErr.code !== 11000) {
                     console.warn("[JobSuggestions] Cache write failed:", cacheErr.message);

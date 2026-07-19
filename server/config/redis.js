@@ -5,7 +5,6 @@ const redisClient = createClient({
 
   socket: {
     reconnectStrategy: (retries) => {
-      console.log(`Redis reconnect attempt: ${retries}`);
       return Math.min(retries * 100, 3000);
     },
     connectTimeout: 10000,
@@ -16,13 +15,12 @@ const redisClient = createClient({
 // ─────────────────────────────
 // Connection Events
 // ─────────────────────────────
-redisClient.on("connect", () => console.log("🔌 Redis connecting..."));
-redisClient.on("ready", () => console.log("✅ Redis connected"));
-redisClient.on("reconnecting", () => console.log("🔄 Redis reconnecting..."));
-redisClient.on("end", () => console.log("❌ Redis connection closed"));
+redisClient.on("connect");
+redisClient.on("ready");
+redisClient.on("reconnecting");
+redisClient.on("end");
 
 redisClient.on("error", (err) => {
-  console.log("❌ Redis Error:", err.message);
 });
 
 // ─────────────────────────────
@@ -34,7 +32,6 @@ async function connectRedis() {
       await redisClient.connect();
     }
   } catch (err) {
-    console.log("🚨 Redis connection failed:", err.message);
   }
 }
 

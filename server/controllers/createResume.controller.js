@@ -11,7 +11,6 @@ import { getActiveModelClient } from "../services/aiClient.js";
 export const createResume = async (req, res) => {
   try {
     const payload = req.body;
-    console.log(JSON.stringify(payload.education, null, 2));
     const model = await getActiveModelClient();
     const {
       full_name,
@@ -29,11 +28,6 @@ export const createResume = async (req, res) => {
       education,
       useAI = true, // Doc 3 default — true enables AI-enhanced output by default
     } = req.body;
-
-    console.log("=== CREATE_RESUME HIT ===");
-    console.log("useAI:", useAI);
-    console.log("ENABLE_AI:", ENABLE_AI);
-    console.log("experience:", experience);
 
     /* ---------- VALIDATION ---------- */
     if (
@@ -241,7 +235,6 @@ ${skills.join(", ")}
             .trim();
           const parsed = JSON.parse(cleaned);
 
-          console.log("=== AI PROJECT RESPONSE ===", parsed.projects);
           return parsed.projects;
         },
         () => projectSuggestions, // fallback to service-driven suggestions

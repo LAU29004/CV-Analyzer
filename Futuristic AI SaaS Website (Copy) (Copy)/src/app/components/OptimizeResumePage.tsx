@@ -255,7 +255,6 @@ export const OptimizeResumePage: React.FC = () => {
     }
   };
   const onLoginClick = () => {
-    console.log("Open login modal");
   };
   
   const beforeScore = beforeAts?.overall ?? 0;

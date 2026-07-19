@@ -221,9 +221,6 @@ const getDBCerts = async (role, skills = [], experienceLevel) => {
   try {
     const dbCerts = await getRecommendedCertificatesForRole(role, experienceLevel, skills);
     if (dbCerts && dbCerts.length > 0) {
-      console.log(
-        `[recommendCertifications] Returning ${dbCerts.length} certs from DB for role="${role}" level="${experienceLevel}"`
-      );
       return dbCerts.map((cert) => ({
         name: cert.name,
         organization: cert.organization,
@@ -273,9 +270,6 @@ export async function recommendCertificationsWithDB({
   const dbOnlyDomains = ["mechanical", "robotics"];
 
 if (dbOnlyDomains.includes(domain)) {
-  console.log(
-    `[recommendCertifications] ${domain} role – fetching courses from DB`
-  );
 
   certResults = await getDBCerts(role, skills, experienceLevel);
   source = "db";

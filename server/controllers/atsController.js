@@ -48,7 +48,6 @@ const { PDFParse } = require("pdf-parse");
 
 /* ================= LOGGER ================= */
 const logAI = (message, meta = {}) => {
-  console.log(`[AI][ATS] ${message}`, meta);
 };
 
 /* ================= HELPERS ================= */

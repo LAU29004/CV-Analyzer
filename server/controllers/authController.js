@@ -44,7 +44,6 @@ export const syncUser = async (req, res) => {
           role: "user",
           lastLogin: new Date(),
         });
-        console.log(`✅ New user created: ${user.email}`);
       } catch (createError) {
         console.error("User creation failed:", createError);
         if (createError.code === 11000) {
@@ -72,7 +71,6 @@ export const syncUser = async (req, res) => {
       }
       user.lastLogin = new Date();
       await user.save();
-      console.log(`✅ User synced: ${user.email}`);
     }
 
     return res.status(200).json({
@@ -121,7 +119,6 @@ export const savePhone = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    console.log(`✅ Phone saved for ${user.email}: ${phoneNumber}`);
 
     return res.status(200).json({
       success: true,
