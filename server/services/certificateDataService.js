@@ -329,7 +329,6 @@ async function removeDuplicateCertificates() {
 
   if (duplicateIds.length > 0) {
     await Certificate.deleteMany({ _id: { $in: duplicateIds } });
-    console.log(`[certificateDataService] Removed ${duplicateIds.length} duplicate certificate records`);
   }
 }
 
@@ -369,9 +368,7 @@ export async function seedCertificates() {
       await Certificate.bulkWrite(bulkOps, { ordered: false });
     }
 
-    console.log(`[certificateDataService] Synced ${bulkOps.length} certificates to database`);
   } catch (err) {
-    console.error("[certificateDataService] Error seeding certificates:", err.message);
   }
 }
 
@@ -563,7 +560,6 @@ export async function getRecommendedCertificatesForRole(role, experienceLevel = 
       .limit(3);
 
     if (domainCerts.length > 0) {
-      console.log(`[certificateDataService] Found ${domainCerts.length} certs for domain="${domain}"`);
       return domainCerts;
     }
 
@@ -578,7 +574,6 @@ export async function getRecommendedCertificatesForRole(role, experienceLevel = 
         .limit(3);
 
       if (skillCerts.length > 0) {
-        console.log(`[certificateDataService] Found ${skillCerts.length} certs via skill overlap for role="${role}"`);
         return skillCerts;
       }
     }
@@ -589,7 +584,6 @@ export async function getRecommendedCertificatesForRole(role, experienceLevel = 
       .limit(3);
 
     if (anyDomainCerts.length > 0) {
-      console.log(`[certificateDataService] Found ${anyDomainCerts.length} certs (level-relaxed) for domain="${domain}"`);
       return anyDomainCerts;
     }
 

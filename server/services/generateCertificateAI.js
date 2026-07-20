@@ -100,9 +100,6 @@ const getDBCerts = async (role, experienceLevel, skills = []) => {
   try {
     const dbCerts = await getRecommendedCertificatesForRole(role, experienceLevel, skills);
     if (dbCerts && dbCerts.length > 0) {
-      console.log(
-        `[generateCertificateAI] Returning ${dbCerts.length} certs from DB for role="${role}" level="${experienceLevel}"`
-      );
       return dbCerts.map((cert) => ({
         name: cert.name,
         provider: cert.organization,
@@ -130,18 +127,15 @@ export async function generateCertificateAI({ role, skills = [], experienceLevel
   // Mechanical domain → always serve from DB (MCAD courses), never AI
   const domain = mapRoleToDomain(role);
   if (domain === "mechanical") {
-    console.log("[generateCertificateAI] Mechanical role – fetching MCAD certs from DB");
     return getDBCerts(role, experienceLevel, skills);
   }
 
   if (domain === "robotics") {
-    console.log("[generateCertificateAI] Robotics role – fetching MCAD certs from DB");
     return getDBCerts(role, experienceLevel, skills);
   }
 
   // AI disabled → serve from DB (role-matched)
   if (ENABLE_AI !== true || useAI === false) {
-    console.log("[generateCertificateAI] AI disabled – fetching certs from DB");
     return getDBCerts(role, experienceLevel, skills);
   }
 

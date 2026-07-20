@@ -50,15 +50,11 @@ FORMAT:
   "summary 3"
 ]
 `;
-    console.log("🤖 [AI] ENABLE_AI:", ENABLE_AI);
-    console.log("🤖 [AI] Calling Gemini with prompt:");
-    console.log(prompt);
+
     const model = await getActiveModelClient();
     const res = await retry(() => model.generateContent(prompt));
-    console.log("🤖 [AI] Gemini response received");
     const raw = (await res.response.text()).replace(/```json|```/g, "").trim();
 
-    console.log("🤖 [AI] RAW GEMINI OUTPUT:\n", raw);
 
     // 🔥 Extract first JSON array safely
     const match = raw.match(/\[[\s\S]*\]/);

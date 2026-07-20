@@ -275,7 +275,6 @@ if (dbOnlyDomains.includes(domain)) {
   source = "db";
 } else if (ENABLE_AI !== true || useAI === false) {
     // ── AI disabled → fetch from DB ──
-    console.log("[recommendCertifications] AI disabled – fetching certs from DB");
     certResults = await getDBCerts(role, skills, experienceLevel);
     source = "db";
 
@@ -354,9 +353,6 @@ Output format (strict):
           { upsert: true, new: true }
         );
       }
-      console.log(
-        `[recommendCertifications] Upserted ${certResults.length} certs to DB for user ${userId}`
-      );
     } catch (dbErr) {
       console.error("[recommendCertifications] Error saving to DB:", dbErr.message);
     }

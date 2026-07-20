@@ -1,4 +1,5 @@
 import { createClient } from "redis";
+import { logAI } from "./logger.js";
 
 const redisClient = createClient({
   url: process.env.REDIS_URL,
@@ -15,13 +16,11 @@ const redisClient = createClient({
 // ─────────────────────────────
 // Connection Events
 // ─────────────────────────────
-redisClient.on("connect");
-redisClient.on("ready");
-redisClient.on("reconnecting");
-redisClient.on("end");
-
-redisClient.on("error", (err) => {
-});
+redisClient.on("connect", () => logAI("Redis connected"));
+redisClient.on("ready", () => logAI("Redis ready"));
+redisClient.on("reconnecting", () => logAI("Redis reconnecting"));
+redisClient.on("end", () => logAI("Redis connection ended"));
+redisClient.on("error", (err) => logAI("Redis error", { err }));
 
 // ─────────────────────────────
 // Safe Connect
@@ -32,6 +31,7 @@ async function connectRedis() {
       await redisClient.connect();
     }
   } catch (err) {
+    
   }
 }
 

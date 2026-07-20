@@ -22,7 +22,6 @@ export const initializePhoneSignIn = async (phoneNumber) => {
 
     // Firebase will handle OTP delivery automatically
     // For server-side verification, we'll use custom tokens
-    console.log(`✅ Phone verification initialized for: ${phoneNumber}`);
     return {
       success: true,
       message: 'Phone verification initialized',
@@ -64,8 +63,6 @@ export const verifyPhoneOnServer = async (uid, phoneNumber) => {
     if (user.phoneNumber !== phoneNumber) {
       throw new Error('Phone number mismatch');
     }
-
-    console.log(`✅ Phone verified on server: ${phoneNumber} (UID: ${uid})`);
     return true;
   } catch (error) {
     console.error('❌ Server-side phone verification failed:', error.message);
@@ -87,8 +84,6 @@ export const isRegionSupported = (countryCode = 'IN') => {
  * Initialize Firebase Phone Auth (for verification)
  */
 export const initializeFirebasePhoneAuth = () => {
-  console.log('✅ Firebase Phone Authentication initialized');
-  console.log('📱 Supports India region: +91');
   return {
     success: true,
     message: 'Firebase Phone Auth ready',
