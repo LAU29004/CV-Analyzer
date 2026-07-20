@@ -1,11 +1,11 @@
 import { createClient } from "redis";
-import { logAI } from "../utils/aiLogger";
 
 const redisClient = createClient({
   url: process.env.REDIS_URL,
 
   socket: {
     reconnectStrategy: (retries) => {
+      console.log(`Redis reconnect attempt: ${retries}`);
       return Math.min(retries * 100, 3000);
     },
     connectTimeout: 10000,
@@ -16,11 +16,14 @@ const redisClient = createClient({
 // ─────────────────────────────
 // Connection Events
 // ─────────────────────────────
-redisClient.on("connect", () => logAI("Redis connected"));
-redisClient.on("ready", () => logAI("Redis ready"));
-redisClient.on("reconnecting", () => logAI("Redis reconnecting"));
-redisClient.on("end", () => logAI("Redis connection ended"));
-redisClient.on("error", (err) => logAI("Redis error", { err }));
+redisClient.on("connect", () => console.log("🔌 Redis connecting..."));
+redisClient.on("ready", () => console.log("✅ Redis connected"));
+redisClient.on("reconnecting", () => console.log("🔄 Redis reconnecting..."));
+redisClient.on("end", () => console.log("❌ Redis connection closed"));
+
+redisClient.on("error", (err) => {
+  console.log("❌ Redis Error:", err.message);
+});
 
 // ─────────────────────────────
 // Safe Connect
@@ -31,7 +34,7 @@ async function connectRedis() {
       await redisClient.connect();
     }
   } catch (err) {
-    
+    console.log("🚨 Redis connection failed:", err.message);
   }
 }
 
